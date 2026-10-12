@@ -3,7 +3,7 @@ ITRUPANEL
 
 A Linux server and web hosting control panel with a web interface in English and Russian. Manage websites, databases, PHP, FTP, DNS, mail, backups, and server services.
 
-**Current version: 0.1.42 · Beta.**
+**Current version: 0.1.42 **
 
 [Official website](https://itrupanel.com/) · [Terms of use](LICENSE.txt)
 
