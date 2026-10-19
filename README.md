@@ -35,7 +35,7 @@ CentOS Stream 9–10, RHEL 8–10 · **amd64 and arm64** · root access and syst
 | **DNS & SSL** | BIND zones and records, Let’s Encrypt (automatic issue and renewal), self-signed and custom certificates |
 | **Files & FTP** | Browser file manager with recycle bin and right-click menu, Pure-FTPd users |
 | **Backups** | Files, databases and settings; full + incremental chains; local or FTP; browse a backup and restore only what you need |
-| **Import** | Move websites, databases, mail (with messages and passwords), DNS zones, FTP users and cron jobs from another ITRUPANEL server using only its address and administrator login; missing PHP is installed automatically; works across Debian, Ubuntu, AlmaLinux and Rocky Linux |
+| **Import** | Move websites, databases, mail (with messages and passwords), DNS zones, FTP users, cron jobs and backup settings from another ITRUPANEL server using only its address and administrator login; missing PHP is installed automatically; works across Debian, Ubuntu, AlmaLinux and Rocky Linux |
 | **Docker** | Containers, Compose projects, images, networks, volumes, full cleanup |
 | **Security** | Per-site request limits (HTTP 429/403), login protection with Fail2ban for FTP, incoming-connection firewall, antivirus with optional ClamAV, quarantine and cleanup from backups |
 | **Monitoring** | Dashboard, resource history, traffic per site, disk usage report, site logs, operations log, background tasks, notifications |
@@ -71,3 +71,52 @@ third-party components in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
 
 Use GitHub Issues for bugs and ideas, or the [community forum](https://itrupanel.com/forum/).
 Please include your OS, panel version and the exact error text.
+
+
+# ITRUPANEL — бесплатная панель для сервера и бесплатная панель для хостинга
+
+**ITRUPANEL** — бесплатная панель управления сервером и хостингом для Linux.
+Сайты, версии PHP, базы данных, почта, DNS, SSL, FTP, резервные копии, Docker,
+антивирус и брандмауэр — в одном быстром веб-интерфейсе на **русском и английском**.
+Один бинарный файл на Go с встроенным интерфейсом: Go на сервере не нужен.
+
+[Сайт](https://itrupanel.com/) · [Документация](https://itrupanel.com/docs.html) ·
+[Демо](https://itrupanel.com/#demo) · [Форум](https://itrupanel.com/forum/) ·
+[Условия использования](LICENSE.txt)
+
+## Установка
+
+От root на чистом Linux-сервере:
+
+    wget -O install.sh https://itrupanel.com/panel/install-itrupanel.sh && bash install.sh
+
+Откройте `https://IP_СЕРВЕРА:3333` и войдите с **случайными логином и паролем**, которые выводятся
+в конце установки. Свои можно задать так: `PANEL_LOGIN=имя PANEL_PASSWORD=пароль bash install.sh`.
+Позже и логин, и пароль меняются в панели (значок ключа) или командой `itrupanel passwd пароль [логин]`.
+Та же команда обновляет установленную панель.
+
+**Поддерживаются:** Ubuntu 22.04 / 24.04 / 26.04, Debian 11–13, AlmaLinux и Rocky Linux 8–10,
+CentOS Stream 9–10, RHEL 8–10 · **amd64 и arm64** · нужны root и systemd.
+
+## Возможности
+
+- **Сайты:** Nginx + PHP-FPM, статика, прокси, свой пользователь и версия PHP у каждого сайта, алиасы, кириллические домены, редиректы, gzip.
+- **Базы данных:** MariaDB, phpMyAdmin, импорт и экспорт дампов, доступ по IP, дополнительные MySQL/MariaDB в Docker.
+- **Почта:** Postfix, Dovecot, OpenDKIM, антиспам Rspamd, веб-почта Roundcube, квоты, алиасы, пересылка, проверка DNS.
+- **DNS и SSL:** зоны BIND, Let’s Encrypt с автоматическим выпуском и продлением.
+- **Файлы и FTP:** файловый менеджер с корзиной и меню по правой кнопке, пользователи Pure-FTPd.
+- **Резервные копии:** файлы, базы и настройки; полные и инкрементные; на сервер или FTP; частичное восстановление.
+- **Импорт данных:** перенос сайтов, баз, почты (с письмами и паролями), DNS-зон, FTP-пользователей, cron и настроек резервного копирования с другого сервера ITRUPANEL по адресу панели и логину администратора; недостающий PHP ставится сам; работает между Debian, Ubuntu, AlmaLinux и Rocky Linux.
+- **Docker, безопасность, мониторинг:** контейнеры и Compose, защита сайтов и входа, брандмауэр, антивирус с лечением из резервных копий, ресурсы, трафик, журналы, задачи, уведомления.
+- **Администрирование:** терминал root в браузере, планировщик CRON, перезагрузка сервера, обновления панели в один клик с подписанными выпусками.
+
+Подробно о каждом разделе — в [документации](https://itrupanel.com/docs.html).
+
+## Лицензия и авторские права
+
+Copyright (c) 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич). ITRUPANEL. All rights reserved.
+
+Бесплатно для личных и коммерческих задач. Исходники доступны для изучения и изменения
+под свои нужды; продажа панели и распространение изменённых версий требуют отдельного разрешения.
+См. [LICENSE.txt](LICENSE.txt), [NOTICE.txt](NOTICE.txt) и лицензии сторонних компонентов в
+[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
