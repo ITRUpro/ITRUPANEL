@@ -15,7 +15,9 @@ Run as root on a clean Linux server:
 
     wget -O install.sh https://itrupanel.com/panel/install-itrupanel.sh && bash install.sh
 
-Open `https://SERVER_IP:3333`, log in as `admin` with the password printed by the installer.
+Open `https://SERVER_IP:3333` and sign in with the **random login and password** printed by the
+installer. To choose your own: `PANEL_LOGIN=name PANEL_PASSWORD=password bash install.sh`.
+Both can be changed later in the panel (key icon) or with `itrupanel passwd <password> [login]`.
 The same command updates an installed panel. Optional: `PHP_VERSION=8.4 bash install.sh`
 or `PHP_VERSION=none bash install.sh`.
 
@@ -33,7 +35,7 @@ CentOS Stream 9–10, RHEL 8–10 · **amd64 and arm64** · root access and syst
 | **DNS & SSL** | BIND zones and records, Let’s Encrypt (automatic issue and renewal), self-signed and custom certificates |
 | **Files & FTP** | Browser file manager with recycle bin and right-click menu, Pure-FTPd users |
 | **Backups** | Files, databases and settings; full + incremental chains; local or FTP; browse a backup and restore only what you need |
-| **Import** | Move websites, databases and cron jobs from another ITRUPANEL server with only its address and administrator login; missing PHP is installed automatically; works across Debian, Ubuntu, AlmaLinux and Rocky Linux |
+| **Import** | Move websites, databases, mail (with messages and passwords), DNS zones, FTP users and cron jobs from another ITRUPANEL server using only its address and administrator login; missing PHP is installed automatically; works across Debian, Ubuntu, AlmaLinux and Rocky Linux |
 | **Docker** | Containers, Compose projects, images, networks, volumes, full cleanup |
 | **Security** | Per-site request limits (HTTP 429/403), login protection with Fail2ban for FTP, incoming-connection firewall, antivirus with optional ClamAV, quarantine and cleanup from backups |
 | **Monitoring** | Dashboard, resource history, traffic per site, disk usage report, site logs, operations log, background tasks, notifications |
@@ -48,7 +50,7 @@ Interface screenshots (light and dark themes) are on the [website](https://itrup
 ## Security and updates
 
 Releases are full archives with a SHA-256 checksum and an Ed25519 signature checked by the
-installer and by the panel before updating. Passwords for the panel are stored as bcrypt hashes;
+installer and by the panel before updating. Panel passwords are stored as bcrypt hashes;
 login attempts are rate-limited; the panel can be placed on a domain behind HTTPS without a port.
 
 ## Ports
@@ -56,11 +58,14 @@ login attempts are rate-limited; the panel can be placed on a domain behind HTTP
 Panel TCP 3333 · websites 80/443 · FTP 21 and passive 30000–30100 · DNS 53 (if used) ·
 mail 25/587/993 (if mail is enabled).
 
-## License
+## License and copyright
 
-Free for personal and commercial use. Source is available to study and adapt for your own
+Copyright (c) 2026 Oleg Sergeevich Dmitriev. ITRUPANEL. All rights reserved.
+
+Free for personal and commercial use. The source is available to study and adapt for your own
 needs; selling the panel or redistributing modified versions requires separate permission.
-See [LICENSE.txt](LICENSE.txt).
+See [LICENSE.txt](LICENSE.txt), [NOTICE.txt](NOTICE.txt) and the licenses of bundled
+third-party components in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
 
 ## Contributing and feedback
 
