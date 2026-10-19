@@ -1,0 +1,12 @@
+ITRUPANEL
+Copyright (c) 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич). ITRUPANEL. All rights reserved.
+See LICENSE.txt (terms of free use). Website: https://itrupanel.com/
+
+Исходный код, интерфейс, тексты и документация ITRUPANEL принадлежат Дмитриеву Олегу Сергеевичу (Oleg Sergeevich Dmitriev)
+и распространяются на условиях файла LICENSE.txt. Названия ITRUPANEL и itrupanel.com принадлежат тому же правообладателю.
+
+The source code, user interface, texts and documentation of ITRUPANEL are the property of Oleg Sergeevich Dmitriev
+and are distributed under the terms of LICENSE.txt. The names ITRUPANEL and itrupanel.com belong to the same rights holder.
+
+Сторонние компоненты, входящие в состав панели, перечислены в THIRD-PARTY-NOTICES.txt; на них действуют их собственные лицензии.
+Third-party components bundled with the panel are listed in THIRD-PARTY-NOTICES.txt; they remain under their own licenses.
