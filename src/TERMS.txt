@@ -18,7 +18,7 @@ ITRUPANEL — свободное программное обеспечение. 
 Панель предоставляется «как есть», без каких-либо гарантий, в пределах, допускаемых применимым законом (разделы 15 и 16 лицензии GPL). Пользователь отвечает за резервные копии, безопасность и законность работы своего сервера. Бесплатная поддержка и сроки выпуска обновлений не гарантируются.
 
 6. Предыдущие условия
-Выпуски, полученные на прежних условиях бесплатного использования (редакция 1.0), можно продолжать использовать на этих условиях; начиная с версии 0.3.0 действует лицензия GPL-3.0.
+Выпуски, полученные на прежних условиях бесплатного использования (редакция 1.0), можно продолжать использовать на этих условиях; начиная с версии 0.2.1 действует лицензия GPL-3.0.
 
 ENGLISH TRANSLATION — Russian text prevails in case of differences.
 
@@ -42,4 +42,4 @@ These terms do not restrict rights granted by the licenses of third-party librar
 The panel is provided “as is”, without warranty of any kind, to the extent permitted by applicable law (sections 15 and 16 of the GPL). Users are responsible for backups, security and lawful operation of their servers. Free support and update schedules are not guaranteed.
 
 6. Previous terms
-Releases received under the earlier free-use terms (edition 1.0) may continue to be used under those terms; from version 0.3.0 the GPL-3.0 license applies.
+Releases received under the earlier free-use terms (edition 1.0) may continue to be used under those terms; from version 0.2.1 the GPL-3.0 license applies.

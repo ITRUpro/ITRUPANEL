@@ -2,7 +2,7 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
-## 0.3.0
+## 0.2.1
 
 **ITRUPANEL is now open source.** The source code is published on GitHub under the GNU GPL v3 (`GPL-3.0-only`).
 

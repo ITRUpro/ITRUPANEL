@@ -25,7 +25,7 @@ var webFS embed.FS
 //go:embed templates
 var tplFS embed.FS
 
-var Version = "0.3.0"
+var Version = "0.2.1"
 
 type Config struct {
 	Listen   string // адрес панели, по умолчанию :3333

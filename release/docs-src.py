@@ -588,7 +588,7 @@ sec("license", "more",
        "При распространении панели или изменённой версии нужно передавать исходный код на тех же условиях и сохранять уведомления об авторстве. Название и логотип ITRUPANEL лицензией не передаются.",
        "Авторские права: Copyright (c) 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич). ITRUPANEL. Лицензия GPL-3.0-only.",
        "Файлы в архиве панели: LICENSE.txt, NOTICE.txt, THIRD-PARTY-NOTICES.txt."],
-      "Выпуски до 0.3.0, полученные на прежних условиях бесплатного использования, остаются на тех условиях; с 0.3.0 действует GPL-3.0. Вопросы по лицензии — через форму «Обратная связь» или форум."),
+      "Выпуски до 0.2.1, полученные на прежних условиях бесплатного использования, остаются на тех условиях; с 0.2.1 действует GPL-3.0. Вопросы по лицензии — через форму «Обратная связь» или форум."),
     t("License and copyright",
       "Who owns ITRUPANEL, under which terms it can be used and which third-party components it includes.",
       "ITRUPANEL is free software under the GNU GPL version 3 (file LICENSE.txt); short terms of use are shown on the first sign-in to the panel and you accept them once. The rights holder is stated in NOTICE.txt and in the first line of every source file. Third-party libraries are listed in THIRD-PARTY-NOTICES.txt together with their licenses.",
@@ -597,7 +597,7 @@ sec("license", "more",
        "When you distribute the panel or a modified version you must provide the source code under the same terms and keep the copyright notices. The ITRUPANEL name and logo are not licensed.",
        "Copyright: Copyright (c) 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич). ITRUPANEL. Licensed under GPL-3.0-only.",
        "Files in the panel archive: LICENSE.txt, NOTICE.txt, THIRD-PARTY-NOTICES.txt."],
-      "Releases before 0.3.0 received under the earlier free-use terms stay under those terms; from 0.3.0 the GPL-3.0 applies. Questions about the license: use the Feedback form or the forum."))
+      "Releases before 0.2.1 received under the earlier free-use terms stay under those terms; from 0.2.1 the GPL-3.0 applies. Questions about the license: use the Feedback form or the forum."))
 
 out = {"groups": [{"id": k, "ru": v[0], "en": v[1]} for k, v in G.items()], "sections": S}
 pathlib.Path(__file__).with_name("docs-content.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")

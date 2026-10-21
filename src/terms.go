@@ -31,7 +31,7 @@ type TermsAcceptance struct {
 
 func termsAcceptedLocked(user string) bool {
 	a, ok := store.TermsAcceptance[user]
-	// Consent given to the earlier free-use terms (edition 1.0) stays valid: version 0.3.0
+	// Consent given to the earlier free-use terms (edition 1.0) stays valid: version 0.2.1
 	// replaced them with the GPL-3.0, which grants more rights and needs no new acceptance.
 	legacy := a.Revision == "1.0" && (a.SHA256 == "cf8e463d91e56c86ace48bba7e4378286c8f7b4c24306442c7c9023a0d964a78" || a.SHA256 == "7d4220e0a0301f7b9a94ad9df79862884334d536739e9a380b3b82e4131b5245")
 	current := a.Revision == termsRevision && a.SHA256 == termsDigest

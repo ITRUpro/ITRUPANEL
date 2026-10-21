@@ -1010,7 +1010,7 @@
      "Авторские права: Copyright (c) 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич). ITRUPANEL. Лицензия GPL-3.0-only.",
      "Файлы в архиве панели: LICENSE.txt, NOTICE.txt, THIRD-PARTY-NOTICES.txt."
     ],
-    "note": "Выпуски до 0.3.0, полученные на прежних условиях бесплатного использования, остаются на тех условиях; с 0.3.0 действует GPL-3.0. Вопросы по лицензии — через форму «Обратная связь» или форум."
+    "note": "Выпуски до 0.2.1, полученные на прежних условиях бесплатного использования, остаются на тех условиях; с 0.2.1 действует GPL-3.0. Вопросы по лицензии — через форму «Обратная связь» или форум."
    },
    "en": {
     "title": "License and copyright",
@@ -1023,7 +1023,7 @@
      "Copyright: Copyright (c) 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич). ITRUPANEL. Licensed under GPL-3.0-only.",
      "Files in the panel archive: LICENSE.txt, NOTICE.txt, THIRD-PARTY-NOTICES.txt."
     ],
-    "note": "Releases before 0.3.0 received under the earlier free-use terms stay under those terms; from 0.3.0 the GPL-3.0 applies. Questions about the license: use the Feedback form or the forum."
+    "note": "Releases before 0.2.1 received under the earlier free-use terms stay under those terms; from 0.2.1 the GPL-3.0 applies. Questions about the license: use the Feedback form or the forum."
    }
   }
  ]
