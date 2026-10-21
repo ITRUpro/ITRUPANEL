@@ -1,0 +1,159 @@
+<p align="center">
+  <img src="docs/screenshots/dashboard-en.jpg" alt="Дашборд ITRUPANEL" width="900">
+</p>
+
+<h1 align="center">ITRUPANEL</h1>
+
+<p align="center"><b>Бесплатная панель для сервера и хостинга с открытым исходным кодом.</b><br>
+Сайты, PHP, базы данных, почта, DNS, SSL, FTP, резервные копии, Docker, антивирус и брандмауэр в одном быстром веб-интерфейсе.<br>
+Русский и английский · один бинарный файл на Go · amd64 и arm64</p>
+
+<p align="center">
+  <a href="https://github.com/ITRUpro/ITRUPANEL/releases/latest"><img alt="Последний выпуск" src="https://img.shields.io/github/v/release/ITRUpro/ITRUPANEL?label=release&color=3b5bdb"></a>
+  <a href="LICENSE.txt"><img alt="Лицензия: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-3b5bdb"></a>
+  <a href="https://github.com/ITRUpro/ITRUPANEL/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ITRUpro/ITRUPANEL/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Платформы" src="https://img.shields.io/badge/linux-amd64%20%7C%20arm64-3b5bdb">
+</p>
+
+<p align="center">
+  <a href="https://itrupanel.com/">Сайт</a> ·
+  <a href="https://itrupanel.com/docs.html">Документация</a> ·
+  <a href="https://itrupanel.com/#demo">Демо</a> ·
+  <a href="https://itrupanel.com/forum/">Форум</a> ·
+  <a href="README.md">English</a>
+</p>
+
+---
+
+## О проекте
+
+**ITRUPANEL** превращает чистый Linux-сервер в хостинг-платформу. У каждого сайта свой системный пользователь и свой пул
+PHP-FPM, поэтому сайты изолированы друг от друга. Всё управляется из браузера, на русском или английском, в светлой или
+тёмной теме. Панель — один бинарный файл на Go с встроенным интерфейсом.
+
+Панель **бесплатна для личных и коммерческих задач**, в том числе для хостинга своим клиентам, и распространяется под
+лицензией [GNU GPL v3](LICENSE.txt).
+
+## Скриншоты
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/sites-en.jpg" alt="Сайты"><br><sub><b>Сайты</b> — Nginx, PHP-FPM, прокси, состояние SSL</sub></td>
+    <td width="50%"><img src="docs/screenshots/mail-en.jpg" alt="Почта"><br><sub><b>Почта</b> — Postfix, Dovecot, DKIM, Roundcube</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/backups-en.jpg" alt="Резервные копии"><br><sub><b>Резервные копии</b> — сервер, FTP и облако S3</sub></td>
+    <td width="50%"><img src="docs/screenshots/docker-en.jpg" alt="Docker"><br><sub><b>Docker</b> — контейнеры, Compose, образы</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/firewall-en.jpg" alt="Брандмауэр"><br><sub><b>Брандмауэр</b> — правила по порту, протоколу и адресу</sub></td>
+    <td width="50%"><img src="docs/screenshots/security-en.jpg" alt="Защита сайтов"><br><sub><b>Защита сайтов</b> — ограничения запросов для каждого сайта</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/files-en.jpg" alt="Менеджер файлов"><br><sub><b>Менеджер файлов</b> — редактор кода, корзина</sub></td>
+    <td width="50%"><img src="docs/screenshots/antivirus-en.jpg" alt="Антивирус"><br><sub><b>Антивирус</b> — проверка, карантин, лечение</sub></td>
+  </tr>
+</table>
+
+## Возможности и службы
+
+| Раздел | Что внутри |
+| --- | --- |
+| **Сайты** | Nginx + PHP-FPM, статика, обратный прокси, свой пользователь и версия PHP у каждого сайта, алиасы, кириллические домены, редиректы, gzip, свои директивы Nginx, сайт по умолчанию, при необходимости Apache или OpenLiteSpeed |
+| **PHP** | Несколько версий PHP одновременно, модули, редактор `php.ini` |
+| **Базы данных** | Базы и пользователи MariaDB, phpMyAdmin, импорт и экспорт дампов, доступ по IP, дополнительные серверы MySQL/MariaDB в Docker |
+| **Почта** | Postfix, Dovecot, OpenDKIM, антиспам Rspamd, веб-почта Roundcube, квоты, алиасы, пересылка, проверка DNS |
+| **DNS и SSL** | Зоны и записи BIND, Let’s Encrypt с автоматическим выпуском и продлением, самоподписанные и свои сертификаты |
+| **Файлы и FTP** | Файловый менеджер с редактором кода (подсветка, поиск и замена), корзина, пользователи Pure-FTPd |
+| **Резервные копии** | Файлы, базы и настройки; полные и инкрементные цепочки; на сервере, на FTP или в любом S3-совместимом облаке (Amazon S3, Yandex Object Storage, Cloudflare R2, Wasabi, DigitalOcean Spaces, MinIO); просмотр копии и восстановление только нужного |
+| **Импорт данных** | Перенос сайтов, баз, почты (с письмами и паролями), DNS-зон, FTP-пользователей, cron и настроек копирования с другого сервера ITRUPANEL по адресу панели и логину администратора |
+| **Docker** | Контейнеры, проекты Compose, образы, сети, тома, очистка |
+| **Безопасность** | Ограничения запросов для каждого сайта, защита входа и Fail2ban для FTP, брандмауэр входящих соединений, антивирус с необязательным ClamAV, карантин и лечение из резервных копий |
+| **Мониторинг** | Дашборд, история ресурсов, трафик по сайтам, использование диска, журналы сайтов, журнал операций, задачи, уведомления |
+| **Администрирование** | Терминал root в браузере, планировщик CRON, перезагрузка сервера, обновления панели в один клик с подписанными выпусками |
+
+Подробно о каждом разделе — в [документации](https://itrupanel.com/docs.html).
+
+## Поддерживаемые системы
+
+| Семейство | Версии |
+| --- | --- |
+| Ubuntu | 22.04, 24.04, 26.04 |
+| Debian | 11, 12, 13 |
+| AlmaLinux, Rocky Linux | 8, 9, 10 |
+| CentOS Stream, RHEL | 9–10, 8–10 |
+
+amd64 и arm64 · нужны root и systemd · устанавливайте на чистый сервер.
+
+## Установка
+
+От root на новом сервере:
+
+```bash
+wget -O install.sh https://itrupanel.com/panel/install-itrupanel.sh && bash install.sh
+```
+
+Установщик скачивает выпуск, проверяет контрольную сумму и подпись, настраивает Nginx, PHP-FPM, MariaDB, FTP и DNS и выводит
+адрес панели со **случайными логином и паролем администратора**. Откройте `https://IP_СЕРВЕРА:3333` и войдите.
+
+Дополнительные параметры:
+
+```bash
+PANEL_LOGIN=имя PANEL_PASSWORD=пароль bash install.sh   # свои логин и пароль
+PHP_VERSION=8.4 bash install.sh                         # версия PHP для установки
+PHP_VERSION=none bash install.sh                        # не устанавливать PHP
+```
+
+Логин и пароль позже меняются в панели (значок ключа) или командой `itrupanel passwd пароль [логин]`.
+
+Порты: панель TCP 3333 · сайты 80/443 · FTP 21 и пассивные 30000–30100 · DNS 53 (если используется) · почта 25/587/993 (если включена).
+
+## Обновление
+
+Та же команда установщика обновляет установленную панель и делает копию программы и настроек. Выпуски — полные архивы с
+контрольной суммой SHA-256 и подписью Ed25519, которые установщик и панель проверяют перед обновлением. Обновить можно и кнопкой
+**Обновления** в самой панели.
+
+## Перенос с другого сервера
+
+На новом сервере откройте **Импорт данных**, введите адрес и логин администратора старой ITRUPANEL и выберите, что перенести.
+Недостающие версии PHP ставятся автоматически; перенос работает между Debian, Ubuntu, AlmaLinux и Rocky Linux.
+
+## Сборка из исходников
+
+Нужны Go (версия из `go.mod`) и Node.js 20 или новее.
+
+```bash
+git clone https://github.com/ITRUpro/ITRUPANEL.git
+cd ITRUPANEL
+./build.sh                # bin/itrupanel-linux-amd64 и bin/itrupanel-linux-arm64
+go test ./...             # модульные тесты
+```
+
+Попробовать интерфейс локально, не трогая систему (в демо-режиме команды не выполняются):
+
+```bash
+go run . -demo -http -listen 127.0.0.1:3399
+```
+
+Интерфейс написан на обычном JavaScript в `web/`, английские тексты лежат в `i18n/`. Редактор кода — сборка CodeMirror 6 из
+`tools/codemirror`.
+
+## Вопросы и поддержка
+
+- Нашли ошибку или есть идея? Создайте [обращение](https://github.com/ITRUpro/ITRUPANEL/issues): укажите систему, версию панели и точный текст ошибки.
+- Вопросы и обсуждение — на [форуме](https://itrupanel.com/forum/).
+- Проблемы безопасности: прочитайте [SECURITY.md](SECURITY.md) и не сообщайте о них в открытых обращениях.
+
+## Участие в проекте
+
+Pull request-ы приветствуются — см. [CONTRIBUTING.md](CONTRIBUTING.md). Для нового текста интерфейса нужен английский перевод в
+`i18n/en-ui.json` (без него сборка не пройдёт), а новые возможности нужно описать в `release/docs-src.py`.
+
+## Авторские права и лицензия
+
+Copyright (c) 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич). ITRUPANEL.
+
+ITRUPANEL — свободное программное обеспечение под лицензией [GNU General Public License v3.0](LICENSE.txt) (`GPL-3.0-only`).
+См. также [NOTICE.txt](NOTICE.txt) и лицензии сторонних компонентов в [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+Названия ITRUPANEL и itrupanel.com и логотип лицензией GPL не передаются.

@@ -1,0 +1,38 @@
+name: Bug report / Сообщение об ошибке
+description: Something does not work as expected / Что-то работает не так
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not report security problems here — see SECURITY.md. / Об уязвимостях не пишите здесь — см. SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Panel version / Версия панели
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system / Операционная система
+      placeholder: "Debian 13, Ubuntu 24.04, Rocky 9 …"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened and what you expected / Что произошло и чего вы ожидали
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / Как воспроизвести
+  - type: textarea
+    id: log
+    attributes:
+      label: Exact error text or log lines / Точный текст ошибки или строки журнала
+      render: text
+      description: Remove passwords, keys and private addresses. / Уберите пароли, ключи и закрытые адреса.

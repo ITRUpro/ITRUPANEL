@@ -1,0 +1,497 @@
+// Copyright (c) 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич). ITRUPANEL. Licensed under GPL-3.0-only (SPDX-License-Identifier: GPL-3.0-only). See LICENSE.txt
+
+package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+)
+
+// Версии PHP: на Debian — репозиторий Sury, на Ubuntu 22.04/24.04 — PPA ondrej/php, на Ubuntu 26.04 — Sury, на RHEL — Remi.
+
+var phpAll = []string{"5.6", "7.0", "7.1", "7.2", "7.3", "7.4", "8.0", "8.1", "8.2", "8.3", "8.4", "8.5"}
+
+// phpInstallMu — пакетный менеджер не терпит параллельных установок.
+var phpInstallMu sync.Mutex
+
+func vv(v string) string { return strings.ReplaceAll(v, ".", "") }
+
+func phpService(v string) string {
+	if osInfo.Family == "rhel" {
+		return "php" + vv(v) + "-php-fpm"
+	}
+	return "php" + v + "-fpm"
+}
+
+func phpPoolDir(v string) string {
+	if osInfo.Family == "rhel" {
+		return "/etc/opt/remi/php" + vv(v) + "/php-fpm.d"
+	}
+	return "/etc/php/" + v + "/fpm/pool.d"
+}
+
+func phpIni(v string) string {
+	if osInfo.Family == "rhel" {
+		return "/etc/opt/remi/php" + vv(v) + "/php.ini"
+	}
+	return "/etc/php/" + v + "/fpm/php.ini"
+}
+
+func phpCLI(v string) string {
+	if osInfo.Family == "rhel" {
+		return "/usr/bin/php" + vv(v)
+	}
+	return "/usr/bin/php" + v
+}
+
+func phpFPMBin(v string) string {
+	if osInfo.Family == "rhel" {
+		return "/opt/remi/php" + vv(v) + "/root/usr/sbin/php-fpm"
+	}
+	return "/usr/sbin/php-fpm" + v
+}
+
+var reSvcVer = regexp.MustCompile(`php(\d)\.?(\d)`)
+
+func svcVersion(name string) string {
+	m := reSvcVer.FindStringSubmatch(name)
+	if m == nil {
+		return ""
+	}
+	return m[1] + "." + m[2]
+}
+
+func fpmBinary(svc string) string  { return phpFPMBin(svcVersion(svc)) }
+func fpmConfDir(svc string) string { return filepath.Dir(phpPoolDir(svcVersion(svc))) }
+
+func phpPackages(v string) []string {
+	ext := []string{"fpm", "cli", "mysql", "gd", "curl", "mbstring", "xml", "zip", "intl", "bcmath", "opcache", "sqlite3", "imagick", "soap"}
+	var out []string
+	for _, e := range ext {
+		if e == "opcache" && v >= "8.5" {
+			continue // в PHP 8.5 OPcache встроен в ядро, отдельного пакета нет
+		}
+		if osInfo.Family == "rhel" {
+			switch e {
+			case "fpm", "cli", "gd", "mbstring", "xml", "intl", "bcmath", "opcache", "soap", "pdo":
+				out = append(out, "php"+vv(v)+"-php-"+e)
+			case "mysql":
+				out = append(out, "php"+vv(v)+"-php-mysqlnd")
+			case "zip":
+				out = append(out, "php"+vv(v)+"-php-pecl-zip")
+			case "imagick":
+				out = append(out, "php"+vv(v)+"-php-pecl-imagick-im7")
+			case "curl", "sqlite3":
+				// входят в common/pdo
+				out = append(out, "php"+vv(v)+"-php-pdo")
+			}
+			continue
+		}
+		out = append(out, "php"+v+"-"+e)
+	}
+	return dedup(out)
+}
+
+func dedup(a []string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, s := range a {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func phpInstalled() []string {
+	var out []string
+	for _, v := range phpAll {
+		if cfg.Dry {
+			if v == "8.2" || v == "8.3" {
+				out = append(out, v)
+			}
+			continue
+		}
+		if _, err := os.Stat(phpPoolDir(v)); err == nil {
+			if _, err := os.Stat(phpFPMBin(v)); err == nil {
+				out = append(out, v)
+			}
+		}
+	}
+	return out
+}
+
+func phpIsInstalled(v string) bool {
+	for _, x := range phpInstalled() {
+		if x == v {
+			return true
+		}
+	}
+	return false
+}
+
+func defaultPHP() string {
+	mu.Lock()
+	d := store.Settings.DefaultPHP
+	mu.Unlock()
+	inst := phpInstalled()
+	for _, v := range inst {
+		if v == d {
+			return d
+		}
+	}
+	if len(inst) > 0 {
+		return inst[len(inst)-1]
+	}
+	return ""
+}
+
+// Настройки php.ini, которые можно менять в панели.
+var phpIniKeys = []string{"memory_limit", "upload_max_filesize", "post_max_size", "max_execution_time", "max_input_time", "max_input_vars", "display_errors", "date.timezone", "short_open_tag", "opcache.enable"}
+
+var reIniLine = regexp.MustCompile(`(?m)^\s*;?\s*([a-z_.]+)\s*=\s*(.*)$`)
+
+func readIni(v string) map[string]string {
+	vals := map[string]string{}
+	for _, m := range reIniLine.FindAllStringSubmatch(readFile(phpIni(v)), -1) {
+		line := strings.TrimSpace(m[0])
+		if strings.HasPrefix(line, ";") {
+			continue
+		}
+		vals[m[1]] = strings.TrimSpace(m[2])
+	}
+	out := map[string]string{}
+	for _, k := range phpIniKeys {
+		out[k] = vals[k]
+	}
+	return out
+}
+
+func writeIni(v string, set map[string]string) error {
+	p := phpIni(v)
+	s := readFile(p)
+	if s == "" && !cfg.Dry {
+		return errf("Не найден %s", p)
+	}
+	for k, val := range set {
+		ok := false
+		for _, kk := range phpIniKeys {
+			ok = ok || kk == k
+		}
+		// Пустое поле формы — «не менять»: строка «max_input_vars = » означала бы 0
+		// и PHP перестал бы принимать параметры запросов (phpMyAdmin не входит)
+		if !ok || strings.ContainsAny(val, "\n\r") || strings.TrimSpace(val) == "" {
+			continue
+		}
+		re := regexp.MustCompile(`(?m)^\s*;?\s*` + regexp.QuoteMeta(k) + `\s*=.*$`)
+		line := k + " = " + val
+		if re.MatchString(s) {
+			done := false
+			s = re.ReplaceAllStringFunc(s, func(m string) string {
+				if done {
+					return m
+				}
+				done = true
+				return line
+			})
+		} else {
+			s += "\n" + line + "\n"
+		}
+	}
+	if err := writeFile(p, []byte(s), 0644); err != nil {
+		return err
+	}
+	return service("restart", phpService(v))
+}
+
+// repairEmptyIniValues комментирует строки «ключ = » без значения для настроек панели:
+// так PHP снова берёт значение по умолчанию. Их записывала форма php.ini версий до 0.1.61.
+func repairEmptyIniValues(s string) (string, bool) {
+	changed := false
+	for _, k := range phpIniKeys {
+		re := regexp.MustCompile(`(?m)^[ \t]*` + regexp.QuoteMeta(k) + `[ \t]*=[ \t]*("")?[ \t]*$`)
+		if re.MatchString(s) {
+			s = re.ReplaceAllString(s, "; "+k+" = ; ITRUPANEL: пустое значение отключено")
+			changed = true
+		}
+	}
+	return s, changed
+}
+
+// phpRepoSetup подключает репозиторий с несколькими версиями PHP (один раз).
+func phpRepoSetup() error {
+	switch {
+	case osInfo.Family == "rhel":
+		if fileExists("/etc/yum.repos.d/remi.repo") {
+			return nil
+		}
+		major := strings.Split(osInfo.Version, ".")[0]
+		// EPEL нужен Remi; в части образов он установлен, но выключен (enabled=0)
+		_, err := sh("(rpm -q epel-release >/dev/null || dnf install -y epel-release || dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-" + major + ".noarch.rpm); (dnf config-manager --set-enabled epel 2>/dev/null || sed -i '/^\\[epel\\]/,/^\\[/ s/^enabled=0/enabled=1/' /etc/yum.repos.d/epel.repo); dnf install -y https://rpms.remirepo.net/enterprise/remi-release-" + major + ".rpm")
+		return err
+	case osInfo.ID == "ubuntu":
+		if ubuntuResolute() {
+			return setupResolutePHPRepository()
+		}
+		if out, _ := sh("ls /etc/apt/sources.list.d/ | grep -i ondrej"); out != "" {
+			return nil
+		}
+		_, err := sh("apt-get install -y software-properties-common && LC_ALL=C.UTF-8 add-apt-repository -y ppa:ondrej/php && apt-get update")
+		return err
+	default:
+		if fileExists("/etc/apt/sources.list.d/php-sury.list") {
+			return nil
+		}
+		_, err := sh(`apt-get install -y curl ca-certificates gnupg lsb-release && curl -fsSL https://packages.sury.org/php/apt.gpg -o /usr/share/keyrings/php-sury.gpg && echo "deb [signed-by=/usr/share/keyrings/php-sury.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php-sury.list && apt-get update`)
+		return err
+	}
+}
+
+var phpJobs = map[string]string{} // версия → состояние установки
+
+func phpInstall(v string) error {
+	phpInstallMu.Lock()
+	defer phpInstallMu.Unlock()
+	if phpIsInstalled(v) {
+		return nil
+	}
+	if err := phpRepoSetup(); err != nil {
+		return err
+	}
+	all := phpPackages(v)
+	if err := pkgInstall(all...); err != nil {
+		// не все модули есть для старых/новых версий: ставим ядро, остальное — по одному
+		var core []string
+		for _, p := range all {
+			if strings.HasSuffix(p, "-fpm") || strings.HasSuffix(p, "-cli") {
+				core = append(core, p)
+			}
+		}
+		if err2 := pkgInstall(core...); err2 != nil {
+			return err2
+		}
+		for _, p := range all {
+			if !strings.HasSuffix(p, "-fpm") && !strings.HasSuffix(p, "-cli") {
+				pkgInstall(p)
+			}
+		}
+	}
+	os.MkdirAll(P(sockDir), 0755)
+	os.MkdirAll(P("/run/php"), 0755)
+	return service("enable", phpService(v))
+}
+
+// Дополнительные модули, которые можно поставить из панели.
+var phpExtras = []string{"redis", "memcached", "apcu", "igbinary", "mongodb", "pgsql", "ldap", "gmp", "imap", "xdebug", "tidy", "xsl", "snmp", "sodium"}
+
+func phpExtPackage(v, ext string) string {
+	if osInfo.Family == "rhel" {
+		switch ext {
+		case "redis", "memcached", "apcu", "igbinary", "mongodb", "xdebug":
+			return "php" + vv(v) + "-php-pecl-" + ext
+		}
+		return "php" + vv(v) + "-php-" + ext
+	}
+	return "php" + v + "-" + ext
+}
+
+func phpExtInstall(v, ext string) error {
+	ok := false
+	for _, e := range phpExtras {
+		ok = ok || e == ext
+	}
+	if !ok {
+		return errf("Неизвестный модуль")
+	}
+	phpInstallMu.Lock()
+	defer phpInstallMu.Unlock()
+	if err := pkgInstall(phpExtPackage(v, ext)); err != nil {
+		return errf("Модуль %s для PHP %s не установлен: %s", ext, v, firstLine(err.Error()))
+	}
+	return service("restart", phpService(v))
+}
+
+func phpExtRemove(v, ext string) error {
+	phpInstallMu.Lock()
+	defer phpInstallMu.Unlock()
+	pkg := phpExtPackage(v, ext)
+	var err error
+	if osInfo.Family == "rhel" {
+		_, err = run("dnf", "remove", "-y", pkg)
+	} else {
+		_, err = run("apt-get", "purge", "-y", pkg)
+	}
+	if err != nil {
+		return err
+	}
+	return service("restart", phpService(v))
+}
+
+func registerPHP() {
+	api("php.list", func(q *Req) (any, error) {
+		inst := phpInstalled()
+		def := defaultPHP()
+		mu.Lock()
+		use := map[string]int{}
+		for _, s := range store.Sites {
+			if s.PHP != "" {
+				use[s.PHP]++
+			}
+		}
+		jobs := map[string]string{}
+		for k, v := range phpJobs {
+			jobs[k] = v
+		}
+		mu.Unlock()
+		var rows []map[string]any
+		for _, v := range phpAll {
+			installed := false
+			for _, x := range inst {
+				installed = installed || x == v
+			}
+			row := map[string]any{"version": v, "installed": installed, "default": v == def, "sites": use[v], "job": jobs[v]}
+			if installed {
+				row["active"] = serviceActive(phpService(v))
+			}
+			rows = append(rows, row)
+		}
+		sort.Slice(rows, func(i, j int) bool { return rows[i]["version"].(string) > rows[j]["version"].(string) })
+		return rows, nil
+	})
+	apiOp("php.install", "Установка PHP", func(q *Req) (any, error) {
+		var in struct{ Version string }
+		if err := q.Bind(&in); err != nil {
+			return nil, err
+		}
+		ok := false
+		for _, v := range phpAll {
+			ok = ok || v == in.Version
+		}
+		if !ok {
+			return nil, errf("Неизвестная версия PHP")
+		}
+		mu.Lock()
+		if phpJobs[in.Version] == "running" {
+			mu.Unlock()
+			return nil, errf("Установка уже идёт")
+		}
+		phpJobs[in.Version] = "running"
+		mu.Unlock()
+		user, ip := q.S.User, q.S.IP
+		go func() {
+			start := time.Now()
+			err := phpInstall(in.Version)
+			e := OpEntry{Time: start, User: user, IP: ip, Action: "Установка PHP (завершение)", Object: in.Version, Status: "ok", Ms: time.Since(start).Milliseconds()}
+			mu.Lock()
+			if err != nil {
+				phpJobs[in.Version] = "error"
+				e.Status, e.Error = "error", err.Error()
+				addNotice("error", "phpinst"+in.Version, fmt.Sprintf("PHP %s не установлен: %v", in.Version, firstLine(err.Error())))
+			} else {
+				delete(phpJobs, in.Version)
+				addNotice("info", "", "PHP "+in.Version+" установлен")
+			}
+			save()
+			mu.Unlock()
+			appendJSONL("ops.jsonl", e)
+		}()
+		return "started", nil
+	})
+	apiOp("php.remove", "Удаление PHP", func(q *Req) (any, error) {
+		var in struct{ Version string }
+		if err := q.Bind(&in); err != nil {
+			return nil, err
+		}
+		mu.Lock()
+		for _, s := range store.Sites {
+			if s.PHP == in.Version {
+				mu.Unlock()
+				return nil, errf("PHP %s используется сайтом %s", in.Version, s.Domain)
+			}
+		}
+		mu.Unlock()
+		pk := phpPackages(in.Version)
+		if osInfo.Family == "rhel" {
+			_, err := run("dnf", append([]string{"remove", "-y"}, pk...)...)
+			return nil, err
+		}
+		_, err := run("apt-get", append([]string{"purge", "-y"}, pk...)...)
+		return nil, err
+	})
+	api("php.ini", func(q *Req) (any, error) {
+		var in struct{ Version string }
+		if err := q.Bind(&in); err != nil {
+			return nil, err
+		}
+		if !phpIsInstalled(in.Version) {
+			return nil, errf("PHP %s не установлен", in.Version)
+		}
+		mods := ""
+		if !cfg.Dry {
+			mods, _ = run(phpCLI(in.Version), "-m")
+		}
+		return map[string]any{"values": readIni(in.Version), "keys": phpIniKeys, "modules": strings.Fields(mods), "ini": phpIni(in.Version), "extras": phpExtras}, nil
+	})
+	apiOp("php.ext", "PHP: модуль", func(q *Req) (any, error) {
+		var in struct {
+			Version, Ext string
+			Remove       bool
+		}
+		if err := q.Bind(&in); err != nil {
+			return nil, err
+		}
+		if !phpIsInstalled(in.Version) {
+			return nil, errf("PHP %s не установлен", in.Version)
+		}
+		if in.Remove {
+			return nil, phpExtRemove(in.Version, in.Ext)
+		}
+		return nil, phpExtInstall(in.Version, in.Ext)
+	})
+	apiOp("php.ini.save", "Настройки PHP", func(q *Req) (any, error) {
+		var in struct {
+			Version string
+			Values  map[string]string
+		}
+		if err := q.Bind(&in); err != nil {
+			return nil, err
+		}
+		if !phpIsInstalled(in.Version) {
+			return nil, errf("PHP %s не установлен", in.Version)
+		}
+		return nil, writeIni(in.Version, in.Values)
+	})
+	apiOp("php.default", "PHP по умолчанию", func(q *Req) (any, error) {
+		var in struct{ Version string }
+		if err := q.Bind(&in); err != nil {
+			return nil, err
+		}
+		if !phpIsInstalled(in.Version) {
+			return nil, errf("PHP %s не установлен", in.Version)
+		}
+		mu.Lock()
+		store.Settings.DefaultPHP = in.Version
+		save()
+		mu.Unlock()
+		return nil, nil
+	})
+	apiOp("php.restart", "Перезапуск PHP-FPM", func(q *Req) (any, error) {
+		var in struct{ Version string }
+		if err := q.Bind(&in); err != nil {
+			return nil, err
+		}
+		return nil, service("restart", phpService(in.Version))
+	})
+}
+
+func firstLine(s string) string {
+	s, _, _ = strings.Cut(s, "\n")
+	return s
+}
