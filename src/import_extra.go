@@ -307,8 +307,8 @@ func impTransferMailDomain(ctx context.Context, j *Job, p *impPanel, d impExport
 func impTransferBackup(j *Job, p *impPanel) ImpItemResult {
 	b := p.backup
 	res := ImpItemResult{Name: "backup", Status: "error"}
-	if backupTargetIsS3(b.Target) {
-		return impTransferBackupS3(j, b)
+	if backupTargetIsCloud(b.Target) {
+		return impTransferBackupCloud(j, b)
 	}
 	f := b.FTP
 	if (b.Target != "ftp" && b.Target != "both") || f.Host == "" || f.User == "" {
@@ -360,13 +360,55 @@ func impTransferBackup(j *Job, p *impPanel) ImpItemResult {
 	return res
 }
 
-// impTransferBackupS3 переносит настройки облачного хранилища копий; расписание остаётся выключенным.
-func impTransferBackupS3(j *Job, b impExportBackup) ImpItemResult {
+// impTransferBackupCloud переносит настройки облачного хранилища копий (S3, WebDAV, Dropbox, Google Drive);
+// расписание на новом сервере остаётся выключенным.
+func impTransferBackupCloud(j *Job, b impExportBackup) ImpItemResult {
 	res := ImpItemResult{Name: "backup", Status: "error"}
-	c, err := s3Normalize(b.S3)
-	if err != nil {
-		res.Detail = "некорректные настройки облака: " + firstLine(err.Error())
-		return res
+	kind := cloudKindOfTarget(b.Target)
+	var (
+		cl    cloudStore
+		where string
+		set   func(st *Settings)
+	)
+	switch kind {
+	case cloudS3:
+		c, err := s3Normalize(b.S3)
+		if err != nil {
+			res.Detail = "некорректные настройки облака: " + firstLine(err.Error())
+			return res
+		}
+		if s, e := newS3Client(c); e == nil {
+			cl = s3Store{s}
+		}
+		where = strings.TrimPrefix(strings.TrimPrefix(c.Endpoint, "https://"), "http://") + "/" + c.Bucket
+		set = func(st *Settings) { st.BackupS3 = c }
+	case cloudWebDAV:
+		c, err := davNormalize(b.DAV)
+		if err != nil {
+			res.Detail = "некорректные настройки WebDAV: " + firstLine(err.Error())
+			return res
+		}
+		cl = &davStore{c: c, hc: cloudHTTP(c.Insecure)}
+		where = strings.TrimPrefix(strings.TrimPrefix(c.URL, "https://"), "http://")
+		set = func(st *Settings) { st.BackupDAV = c }
+	case cloudDropbox:
+		c, err := dropboxNormalize(b.Dropbox)
+		if err != nil {
+			res.Detail = "некорректные настройки Dropbox: " + firstLine(err.Error())
+			return res
+		}
+		cl = &dropboxStore{c: c, hc: cloudHTTP(false)}
+		where = "Dropbox"
+		set = func(st *Settings) { st.BackupDropbox = c }
+	case cloudGDrive:
+		c, err := gdriveNormalize(b.GDrive)
+		if err != nil {
+			res.Detail = "некорректные настройки Google Drive: " + firstLine(err.Error())
+			return res
+		}
+		cl = &gdriveStore{c: c, hc: cloudHTTP(false)}
+		where = "Google Drive"
+		set = func(st *Settings) { st.BackupGDrive = c }
 	}
 	if b.Keep < 1 || b.Keep > 60 {
 		b.Keep = 7
@@ -375,8 +417,8 @@ func impTransferBackupS3(j *Job, b impExportBackup) ImpItemResult {
 		b.Hour = 3
 	}
 	warn := ""
-	if cl, e := newS3Client(c); e != nil {
-		warn = firstLine(e.Error())
+	if cl == nil {
+		warn = "хранилище не настроено"
 	} else {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		if e := cl.Test(ctx); e != nil {
@@ -386,7 +428,8 @@ func impTransferBackupS3(j *Job, b impExportBackup) ImpItemResult {
 	}
 	mu.Lock()
 	st := &store.Settings
-	st.BackupTarget, st.BackupS3 = b.Target, c
+	st.BackupTarget = b.Target
+	set(st)
 	if b.Mode == "full" || b.Mode == "incremental" {
 		st.BackupMode = b.Mode
 	}
@@ -399,14 +442,14 @@ func impTransferBackupS3(j *Job, b impExportBackup) ImpItemResult {
 		sched = fmt.Sprintf("ежедневно в %d:00, хранить копий: %d", b.Hour, b.Keep)
 	}
 	res.Status = "ok"
-	res.Detail = fmt.Sprintf("облако %s сохранено; расписание выключено (на старом: %s)", strings.TrimPrefix(strings.TrimPrefix(c.Endpoint, "https://"), "http://")+"/"+c.Bucket, sched)
+	res.Detail = fmt.Sprintf("облако %s сохранено; расписание выключено (на старом: %s)", where, sched)
 	if warn != "" {
 		res.Detail += "; подключиться к облаку с этого сервера не удалось: " + warn
 		return res
 	}
 	if j != nil {
 		jobStage(j, "Поиск существующих копий в облаке")
-		if _, err := scanBackupS3(j); err != nil {
+		if _, err := scanBackupCloud(j, kind); err != nil {
 			res.Detail += "; поиск копий в облаке: " + firstLine(err.Error())
 		} else {
 			res.Detail += "; существующие копии в облаке найдены и подключены"

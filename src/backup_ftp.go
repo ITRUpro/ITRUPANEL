@@ -61,8 +61,8 @@ func uploadBackup(b *Backup) error {
 	if target == "local" {
 		return nil
 	}
-	if backupTargetIsS3(target) {
-		return uploadBackupS3(b, target)
+	if backupTargetIsCloud(target) {
+		return uploadBackupCloud(b, target)
 	}
 	name := path.Base(b.File)
 	if _, err := curlFTP(f, "--ftp-create-dirs", "-T", b.File, ftpBaseURL(f)+name); err != nil {
@@ -88,8 +88,8 @@ func fetchBackup(b *Backup) (string, bool, error) {
 	if b.Remote == "" {
 		return "", false, errf("Файл копии не найден")
 	}
-	if backupIsS3Source(b.RemoteSource) {
-		return fetchBackupS3(b)
+	if backupIsCloudSource(b.RemoteSource) {
+		return fetchBackupCloud(b)
 	}
 	f, _ := backupFTPSettings()
 	if b.RemoteSource != "" && b.RemoteSource != backupFTPSource(f) {
@@ -108,8 +108,8 @@ func deleteRemote(b *Backup) {
 	if b.Remote == "" {
 		return
 	}
-	if backupIsS3Source(b.RemoteSource) {
-		deleteRemoteS3(b)
+	if backupIsCloudSource(b.RemoteSource) {
+		deleteRemoteCloud(b)
 		return
 	}
 	f, _ := backupFTPSettings()
@@ -126,11 +126,11 @@ func deleteRemote(b *Backup) {
 func registerBackupFTP() {
 	apiOp("backups.ftp.discover", "Поиск существующих копий на FTP", func(q *Req) (any, error) {
 		f, t := backupFTPSettings()
-		if backupTargetIsS3(t) {
-			if _, err := s3Normalize(func() BackupS3 { c, _ := backupS3Settings(); return c }()); err != nil {
+		if kind := cloudKindOfTarget(t); kind != "" {
+			if _, err := newCloudStore(kind); err != nil {
 				return nil, errf("Сначала сохраните настройки облака")
 			}
-			id := startJob("backups:ftp:discover", "Поиск копий в облаке", q.S.User, scanBackupS3)
+			id := startJob("backups:ftp:discover", "Поиск копий в облаке", q.S.User, func(j *Job) (any, error) { return scanBackupCloud(j, kind) })
 			return map[string]any{"job": id}, nil
 		}
 		if f.Host == "" || f.User == "" {
@@ -146,13 +146,22 @@ func registerBackupFTP() {
 		if s3c.SecretKey != "" {
 			s3c.SecretKey = strings.Repeat("•", 12)
 		}
-		return map[string]any{"target": t, "ftp": f, "s3": s3c}, nil
+		mu.Lock()
+		dav, dbx, gdr := store.Settings.BackupDAV, store.Settings.BackupDropbox, store.Settings.BackupGDrive
+		mu.Unlock()
+		dav.Pass = maskSecret(dav.Pass)
+		dbx.AppSecret, dbx.RefreshToken = maskSecret(dbx.AppSecret), maskSecret(dbx.RefreshToken)
+		gdr.ClientSecret, gdr.RefreshToken = maskSecret(gdr.ClientSecret), maskSecret(gdr.RefreshToken)
+		return map[string]any{"target": t, "ftp": f, "s3": s3c, "webdav": dav, "dropbox": dbx, "gdrive": gdr}, nil
 	})
 	apiOp("backups.ftp.save", "Резервные копии: место хранения", func(q *Req) (any, error) {
 		var in struct {
 			Target   string
 			FTP      BackupFTP
 			S3       BackupS3
+			WebDAV   BackupWebDAV
+			Dropbox  BackupDropbox
+			GDrive   BackupGDrive
 			Test     bool
 			Schedule *struct {
 				Mode          *string `json:"mode"`
@@ -167,7 +176,7 @@ func registerBackupFTP() {
 		if err := q.Bind(&in); err != nil {
 			return nil, err
 		}
-		if in.Target != "local" && in.Target != "ftp" && in.Target != "both" && !backupTargetIsS3(in.Target) {
+		if in.Target != "local" && in.Target != "ftp" && in.Target != "both" && !backupTargetIsCloud(in.Target) {
 			return nil, errf("Неверное место хранения")
 		}
 		if in.Schedule != nil {
@@ -189,7 +198,24 @@ func registerBackupFTP() {
 		if strings.Trim(in.S3.SecretKey, "•") == "" {
 			in.S3.SecretKey = oldS3.SecretKey
 		}
-		if backupTargetIsS3(in.Target) {
+		mu.Lock()
+		oldDAV, oldDBX, oldGDR := store.Settings.BackupDAV, store.Settings.BackupDropbox, store.Settings.BackupGDrive
+		mu.Unlock()
+		if strings.Trim(in.WebDAV.Pass, "•") == "" {
+			in.WebDAV.Pass = oldDAV.Pass
+		}
+		// Токены Dropbox и Google Drive в браузер не отдаются и не принимаются из него: берём сохранённые.
+		in.Dropbox.RefreshToken, in.Dropbox.AccountID, in.Dropbox.Account = oldDBX.RefreshToken, oldDBX.AccountID, oldDBX.Account
+		if strings.Trim(in.Dropbox.AppSecret, "•") == "" {
+			in.Dropbox.AppSecret = oldDBX.AppSecret
+		}
+		in.GDrive.RefreshToken, in.GDrive.Account = oldGDR.RefreshToken, oldGDR.Account
+		if strings.Trim(in.GDrive.ClientSecret, "•") == "" {
+			in.GDrive.ClientSecret = oldGDR.ClientSecret
+		}
+		var cloud cloudStore
+		switch cloudKindOfTarget(in.Target) {
+		case cloudS3:
 			n, err := s3Normalize(in.S3)
 			if err != nil {
 				return nil, err
@@ -199,9 +225,33 @@ func registerBackupFTP() {
 			if err != nil {
 				return nil, err
 			}
+			cloud = s3Store{cl}
+		case cloudWebDAV:
+			n, err := davNormalize(in.WebDAV)
+			if err != nil {
+				return nil, err
+			}
+			in.WebDAV = n
+			cloud = &davStore{c: n, hc: cloudHTTP(n.Insecure)}
+		case cloudDropbox:
+			n, err := dropboxNormalize(in.Dropbox)
+			if err != nil {
+				return nil, err
+			}
+			in.Dropbox = n
+			cloud = &dropboxStore{c: n, hc: cloudHTTP(false)}
+		case cloudGDrive:
+			n, err := gdriveNormalize(in.GDrive)
+			if err != nil {
+				return nil, err
+			}
+			in.GDrive = n
+			cloud = &gdriveStore{c: n, hc: cloudHTTP(false)}
+		}
+		if cloud != nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
-			if err := cl.Test(ctx); err != nil {
+			if err := cloud.Test(ctx); err != nil {
 				return nil, errf("Не удалось подключиться к облаку: %s", firstLine(err.Error()))
 			}
 			if in.Test {
@@ -212,7 +262,7 @@ func registerBackupFTP() {
 		if strings.ContainsAny(in.FTP.Host+in.FTP.User+in.FTP.Pass+in.FTP.Dir, " \n\r\t") && (in.Target == "ftp" || in.Target == "both") {
 			return nil, errf("Пробелы и переводы строк в параметрах FTP не допускаются")
 		}
-		if in.Target == "ftp" || in.Target == "both" || (in.Test && !backupTargetIsS3(in.Target)) {
+		if in.Target == "ftp" || in.Target == "both" || (in.Test && !backupTargetIsCloud(in.Target)) {
 			if in.FTP.Host == "" || in.FTP.User == "" {
 				return nil, errf("Укажите сервер и логин FTP")
 			}
@@ -228,8 +278,15 @@ func registerBackupFTP() {
 		if in.Target == "ftp" || in.Target == "both" || in.Target == "local" {
 			store.Settings.BackupFTP = in.FTP
 		}
-		if backupTargetIsS3(in.Target) {
+		switch cloudKindOfTarget(in.Target) {
+		case cloudS3:
 			store.Settings.BackupS3 = in.S3
+		case cloudWebDAV:
+			store.Settings.BackupDAV = in.WebDAV
+		case cloudDropbox:
+			store.Settings.BackupDropbox = in.Dropbox
+		case cloudGDrive:
+			store.Settings.BackupGDrive = in.GDrive
 		}
 		if in.Schedule != nil {
 			if in.Schedule.Mode != nil {
@@ -250,4 +307,12 @@ func registerBackupFTP() {
 		mu.Unlock()
 		return nil, nil
 	})
+}
+
+// maskSecret заменяет непустой секрет точками: в браузер значения не отдаются.
+func maskSecret(s string) string {
+	if s == "" {
+		return ""
+	}
+	return strings.Repeat("•", 12)
 }

@@ -2,6 +2,19 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.2
+
+**More cloud storage for backups, two-step authentication and optional automatic updates.**
+
+- backups can be kept in **Yandex Disk**, **Mail.ru Cloud** and any **WebDAV** server (Nextcloud, ownCloud) with a login and an app password, and in **Dropbox** and **Google Drive** through an access grant in your own account; for each one choose "In the cloud" or "Here and in the cloud"
+- backups in these clouds are found, browsed, restored and deleted like S3 ones; the settings are moved by Import data and included in the panel settings backup; permanent tokens stay on the server and are never shown in the interface
+- **two-step authentication** (TOTP, RFC 6238): QR code or manual key, codes from Google Authenticator, Yandex Key, Microsoft Authenticator, Aegis and others, ten one-time recovery codes; a used code cannot be replayed and code guessing is rate-limited
+- **access to the panel only from selected IP addresses**; the panel refuses a list that does not contain your current address
+- lost access can be reset on the server with `itrupanel 2fa-off` and `itrupanel allow-all-ips`
+- **automatic panel updates** in Server information: fixes only or all releases, at the chosen hour; off by default, and manual updating with the Updates button stays available
+
+Dropbox and Google Drive were tested against a model of their APIs, not against live accounts; please report any problem.
+
 ## 0.2.1
 
 **ITRUPANEL is now open source.** The source code is published on GitHub under the GNU GPL v3 (`GPL-3.0-only`).

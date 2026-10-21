@@ -65,12 +65,12 @@ The panel is **free for personal and commercial use**, including hosting for you
 | **Mail** | Postfix, Dovecot, OpenDKIM, Rspamd antispam, Roundcube webmail, quotas, aliases, forwarding, DNS checks |
 | **DNS and SSL** | BIND zones and records, Let’s Encrypt with automatic issue and renewal, self-signed and custom certificates |
 | **Files and FTP** | Browser file manager with a code editor (syntax highlighting, find and replace), recycle bin, Pure-FTPd users |
-| **Backups** | Files, databases and settings; full and incremental chains; stored on the server, on FTP or in any S3-compatible cloud (Amazon S3, Yandex Object Storage, Cloudflare R2, Wasabi, DigitalOcean Spaces, MinIO); browse a backup and restore only what you need |
+| **Backups** | Files, databases and settings; full and incremental chains; stored on the server, on FTP or in the cloud — Yandex Disk, Mail.ru Cloud, Dropbox, Google Drive, any WebDAV (Nextcloud, ownCloud) or any S3-compatible storage (Amazon S3, Yandex Object Storage, Cloudflare R2, Wasabi, DigitalOcean Spaces, MinIO), alone or together with the server; browse a backup and restore only what you need |
 | **Import** | Move websites, databases, mail (messages and passwords included), DNS zones, FTP users, cron jobs and backup settings from another ITRUPANEL server using only its address and administrator login |
 | **Docker** | Containers, Compose projects, images, networks, volumes, cleanup |
-| **Security** | Per-site request limits, login protection with Fail2ban for FTP, incoming-connection firewall, antivirus with optional ClamAV, quarantine and cleanup from backups |
+| **Security** | Per-site request limits, login protection with Fail2ban for FTP, two-step authentication (TOTP) and access to the panel only from selected IP addresses, incoming-connection firewall, antivirus with optional ClamAV, quarantine and cleanup from backups |
 | **Monitoring** | Dashboard, resource history, traffic per site, disk usage, site logs, operations log, background tasks, notifications |
-| **Administration** | Browser root terminal, cron scheduler, server reboot, one-click panel updates with signed releases |
+| **Administration** | Browser root terminal, cron scheduler, server reboot, one-click panel updates with signed releases, optional automatic updates (off by default) |
 
 Every section is described in the [documentation](https://itrupanel.com/en/docs.html).
 

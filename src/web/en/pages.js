@@ -853,9 +853,28 @@ async function backupSettingsForm() {
         ['wasabi', 'Wasabi', 'https://s3.wasabisys.com', 'us-east-1', true, ''],
         ['do', 'DigitalOcean Spaces', 'https://nyc3.digitaloceanspaces.com', 'nyc3', true, "Replace nyc3 with the region of your Space — both in the address and in the Region field."],
       ];
+      f.webdav = f.webdav || {}; f.dropbox = f.dropbox || {}; f.gdrive = f.gdrive || {};
+      const services = [
+        ['s3', 's3', "S3-compatible cloud (Amazon S3, Yandex Object Storage, Cloudflare R2, Wasabi…)"],
+        ['yandex', 'webdav', "Yandex Disk"],
+        ['mailru', 'webdav', "Mail.ru Cloud"],
+        ['dav', 'webdav', "Other WebDAV (Nextcloud, ownCloud…)"],
+        ['dropbox', 'dropbox', 'Dropbox'],
+        ['gdrive', 'gdrive', 'Google Drive'],
+      ];
+      const davUrl = { yandex: 'https://webdav.yandex.ru', mailru: 'https://webdav.cloud.mail.ru' };
+      const kindOfTarget = (tg) => String(tg || '').replace(/^local_/, '');
+      const modeOfTarget = (tg) => ['local', 'ftp', 'both'].includes(tg) ? tg : (String(tg).startsWith('local_') ? 'local_cloud' : 'cloud');
+      const svcOfTarget = (tg) => {
+        const k = kindOfTarget(tg);
+        if (k === 'webdav') return f.webdav.provider === 'yandex' ? 'yandex' : f.webdav.provider === 'mailru' ? 'mailru' : 'dav';
+        return ['dropbox', 'gdrive'].includes(k) ? k : 's3';
+      };
+      const kindOfSvc = () => (services.find((x) => x[0] === f.svc) || services[0])[1];
+      const targetNow = () => f.mode === 'cloud' ? kindOfSvc() : f.mode === 'local_cloud' ? 'local_' + kindOfSvc() : f.mode;
       const draw = (t) => {
-        const ftpOn = t === 'ftp' || t === 'both', s3On = t === 's3' || t === 'local_s3';
-        where.innerHTML = `<div class="seg" data-t>${[['local', "On this server"], ['ftp', "On FTP server"], ['both', "Local and FTP"], ['s3', "In the cloud (S3)"], ['local_s3', "Here and in the cloud"]].map(([v, n]) => `<button data-v="${v}" class="${v === t ? 'on' : ''}">${n}</button>`).join('')}</div>
+        const ftpOn = t === 'ftp' || t === 'both', cloudOn = t === 'cloud' || t === 'local_cloud', svcKind = kindOfSvc();
+        where.innerHTML = `<div class="seg" data-t>${[['local', "On this server"], ['ftp', "On FTP server"], ['both', "Local and FTP"], ['cloud', "In the cloud"], ['local_cloud', "Here and in the cloud"]].map(([v, n]) => `<button data-v="${v}" class="${v === t ? 'on' : ''}">${n}</button>`).join('')}</div>
           <div data-ftp style="margin-top:18px;${ftpOn ? '' : 'display:none'}"><div class="cols2">
             <div class="field"><label>FTP server</label><input type="text" name="host" value="${h(f.ftp.host)}" placeholder="backup.example.ru"></div>
             <div class="field"><label>Port</label><input type="number" name="port" value="${f.ftp.port || 21}"></div>
@@ -864,8 +883,10 @@ async function backupSettingsForm() {
             <div class="field"><label>FTP directory</label><input type="text" name="dir" value="${h(f.ftp.dir || '/itrupanel')}"></div>
             <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="tls" ${f.ftp.tls ? 'checked' : ''}><span>Encryption (FTPS)</span></label></div></div>
             <p class="muted" style="margin:0 0 14px">FTP server: the local file is deleted after upload. Local and FTP: both copies are retained.</p></div>
-          <div data-s3 style="margin-top:18px;${s3On ? '' : 'display:none'}">
-            <div class="field"><label>Service</label><select data-preset>${presets.map(([v, n]) => `<option value="${v}">${n}</option>`).join('')}</select><div class="hint" data-preset-hint></div></div>
+          <div data-cloud style="margin-top:18px;${cloudOn ? '' : 'display:none'}">
+            <div class="field"><label>Cloud service</label><select data-svc>${services.map(([v, , n]) => `<option value="${v}" ${v === f.svc ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+          <div data-s3 style="${svcKind === 's3' ? '' : 'display:none'}">
+            <div class="field"><label>S3 service</label><select data-preset>${presets.map(([v, n]) => `<option value="${v}">${n}</option>`).join('')}</select><div class="hint" data-preset-hint></div></div>
             <div class="cols2">
             <div class="field"><label>Storage address</label><input type="text" name="endpoint" value="${h(f.s3.endpoint || '')}" placeholder="https://s3.example.com" spellcheck="false"></div>
             <div class="field"><label>Region</label><input type="text" name="region" value="${h(f.s3.region || 'us-east-1')}" spellcheck="false"></div>
@@ -876,12 +897,77 @@ async function backupSettingsForm() {
             <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="path_style" ${f.s3.path_style !== false ? 'checked' : ''}><span>Address like server/bucket (path-style)</span></label></div>
             <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="insecure" ${f.s3.insecure ? 'checked' : ''}><span>Do not verify the certificate (self-signed)</span></label></div></div>
             <p class="muted" style="margin:0 0 14px">Create the bucket in advance in your cloud account and give the key permission to read, write and delete objects. “In the cloud” — the local file is deleted after the upload. “Here and in the cloud” — both copies are kept.</p></div>
+          <div data-webdav style="${svcKind === 'webdav' ? '' : 'display:none'}"><div class="cols2">
+            <div class="field"><label>WebDAV address</label><input type="text" name="url" value="${h(f.webdav.url || davUrl[f.svc] || '')}" ${davUrl[f.svc] ? 'readonly' : ''} placeholder="https://dav.example.com" spellcheck="false"></div>
+            <div class="field"><label>Username</label><input type="text" name="user" value="${h(f.webdav.user || '')}" autocomplete="off" spellcheck="false" placeholder="${f.svc === 'mailru' ? "full e-mail address" : f.svc === 'yandex' ? "Yandex login" : ''}"></div>
+            <div class="field"><label>App password</label><input type="password" name="pass" value="${h(f.webdav.pass || '')}" autocomplete="new-password"></div>
+            <div class="field"><label>Folder in the storage</label><input type="text" name="dir" value="${h(f.webdav.dir === undefined ? 'itrupanel' : f.webdav.dir)}" spellcheck="false"></div>
+            <div class="field" ${f.svc === 'dav' ? '' : 'style="display:none"'}><label>&nbsp;</label><label class="check"><input type="checkbox" name="insecure" ${f.webdav.insecure ? 'checked' : ''}><span>Do not verify the certificate (self-signed)</span></label></div></div>
+            <p class="muted" style="margin:0 0 14px" data-webdav-hint></p></div>
+          <div data-dropbox style="${svcKind === 'dropbox' ? '' : 'display:none'}"><div class="cols2">
+            <div class="field"><label>App key</label><input type="text" name="app_key" value="${h(f.dropbox.app_key || '')}" autocomplete="off" spellcheck="false"></div>
+            <div class="field"><label>App secret (optional)</label><input type="password" name="app_secret" value="${h(f.dropbox.app_secret || '')}" autocomplete="new-password"></div>
+            <div class="field"><label>Folder in Dropbox</label><input type="text" name="dir" value="${h(f.dropbox.dir === undefined ? 'itrupanel' : f.dropbox.dir)}" spellcheck="false"></div>
+            <div class="field"><label>Access</label><div data-connected>${f.dropbox.refresh_token ? "<span class=\"tag acc\">Connected</span> " + h(f.dropbox.account || '') : "<span class=\"muted\">not connected</span>"}</div></div></div>
+            <div style="margin-bottom:10px"><button class="btn" type="button" data-connect="dropbox">${f.dropbox.refresh_token ? "Connect again" : "Connect Dropbox"}</button></div><div data-connect-box></div>
+            <p class="muted" style="margin:0 0 14px">Create an app at dropbox.com/developers/apps: “Scoped access” → “App folder”, and on the “Permissions” tab tick files.metadata.read, files.content.read and files.content.write. Copy the “App key” here, press “Connect Dropbox” and allow access. The panel sees only its own folder inside Apps/&lt;app name&gt;.</p></div>
+          <div data-gdrive style="${svcKind === 'gdrive' ? '' : 'display:none'}"><div class="cols2">
+            <div class="field"><label>Client ID</label><input type="text" name="client_id" value="${h(f.gdrive.client_id || '')}" autocomplete="off" spellcheck="false"></div>
+            <div class="field"><label>Client secret</label><input type="password" name="client_secret" value="${h(f.gdrive.client_secret || '')}" autocomplete="new-password"></div>
+            <div class="field"><label>Folder in Google Drive</label><input type="text" name="dir" value="${h(f.gdrive.dir === undefined ? 'itrupanel' : f.gdrive.dir)}" spellcheck="false"></div>
+            <div class="field"><label>Access</label><div data-connected>${f.gdrive.refresh_token ? "<span class=\"tag acc\">Connected</span> " + h(f.gdrive.account || '') : "<span class=\"muted\">not connected</span>"}</div></div></div>
+            <div style="margin-bottom:10px"><button class="btn" type="button" data-connect="gdrive">${f.gdrive.refresh_token ? "Connect again" : "Connect Google Drive"}</button></div><div data-connect-box></div>
+            <p class="muted" style="margin:0 0 14px">In console.cloud.google.com create a project and enable the “Google Drive API”. In “OAuth consent screen” choose “External” and switch the app to “In production” (otherwise access expires after 7 days). Then “Credentials” → “Create credentials” → “OAuth client ID”, type “TVs and Limited Input devices”. Copy the Client ID and Client secret here and press “Connect Google Drive”. The panel sees only the files it created.</p></div>
+          </div>
           <div style="display:flex;gap:10px;margin-top:4px"><button class="btn primary" data-save>Save</button><button class="btn" data-test ${t === 'local' ? 'hidden' : ''}>Test connection</button></div>`;
-        $$('[data-t] button', where).forEach((b) => (b.onclick = () => { f.target = b.dataset.v; keep(); draw(b.dataset.v); }));
+        $$('[data-t] button', where).forEach((b) => (b.onclick = () => { f.mode = b.dataset.v; keep(); draw(b.dataset.v); }));
         const keep = () => {
           $$('[data-ftp] input', where).forEach((i) => (f.ftp[i.name] = i.type === 'checkbox' ? i.checked : i.type === 'number' ? +i.value : i.value));
           $$('[data-s3] input', where).forEach((i) => (f.s3[i.name] = i.type === 'checkbox' ? i.checked : i.value));
+          $$('[data-webdav] input', where).forEach((i) => (f.webdav[i.name] = i.type === 'checkbox' ? i.checked : i.value));
+          $$('[data-dropbox] input', where).forEach((i) => { if (i.name !== 'refresh_token') f.dropbox[i.name] = i.value; });
+          $$('[data-gdrive] input', where).forEach((i) => { if (i.name !== 'refresh_token') f.gdrive[i.name] = i.value; });
+          f.webdav.provider = f.svc === 'yandex' ? 'yandex' : f.svc === 'mailru' ? 'mailru' : 'custom';
         };
+        const svcSel = $('[data-svc]', where);
+        svcSel.onchange = () => { keep(); f.svc = svcSel.value; if (davUrl[f.svc]) f.webdav.url = davUrl[f.svc]; else if (kindOfSvc() === 'webdav' && davUrl[f.webdav.provider] === f.webdav.url) f.webdav.url = ''; draw(f.mode); };
+        const davHints = { yandex: "Create an app password: id.yandex.ru → “Security” → “App passwords” → “Files (WebDAV)”. The login is your Yandex login. The main password will not work.", mailru: "Create a password for an external app: Mail.ru Cloud → “Settings” → “Passwords for external apps” → “Access to files via WebDAV”. The login is the full e-mail address.", dav: "Enter the WebDAV address of your server (for example, Nextcloud: https://cloud.example.com/remote.php/dav/files/LOGIN). An app password is recommended." };
+        const dh = $('[data-webdav-hint]', where); if (dh) dh.textContent = (davHints[f.svc] || '') + " “In the cloud” deletes the local file after upload; “Here and in the cloud” keeps both copies.";
+        $$('[data-connect]', where).forEach((btn) => (btn.onclick = async () => {
+          keep();
+          const kind = btn.dataset.connect, box = $('[data-connect-box]', btn.closest('[data-dropbox],[data-gdrive]'));
+          const cfg = f[kind];
+          const clientId = kind === 'dropbox' ? cfg.app_key : cfg.client_id, clientSecret = kind === 'dropbox' ? cfg.app_secret : cfg.client_secret;
+          btn.disabled = true;
+          const finishOk = async (r) => {
+            const nf = await api('backups.ftp.get');
+            f.dropbox = nf.dropbox; f.gdrive = nf.gdrive;
+            toast("Connected" + (r.account ? ': ' + r.account : ''), 'ok');
+            draw(f.mode);
+          };
+          try {
+            const r = await api('backups.cloud.oauth.start', { kind, client_id: clientId, client_secret: clientSecret });
+            if (kind === 'dropbox') {
+              box.innerHTML = `<div class="callout"><p>1. <a href="${h(r.url)}" target="_blank" rel="noopener">Open the Dropbox page</a> and allow access.</p><p>2. Paste the code shown there:</p><div style="display:flex;gap:10px"><input type="text" data-code placeholder="Code from Dropbox" autocomplete="off" spellcheck="false"><button class="btn primary" type="button" data-confirm>Confirm</button></div></div>`;
+              $('[data-confirm]', box).onclick = async () => {
+                try { await finishOk(await api('backups.cloud.oauth.finish', { kind, state: r.state, code: $('[data-code]', box).value })); } catch (e) { fail(e); }
+              };
+            } else {
+              box.innerHTML = `<div class="callout"><p>1. Open <a href="${h(r.url)}" target="_blank" rel="noopener">${h(r.url)}</a> and sign in to the right Google account.</p><p>2. Enter the code: <b style="font-size:20px;letter-spacing:2px">${h(r.user_code)}</b></p><p class="muted" data-wait><span class="spin" style="width:14px;height:14px;border-width:2px"></span> Waiting for confirmation…</p></div>`;
+              const deadline = Date.now() + 15 * 60 * 1000;
+              const poll = async () => {
+                if (!m.el.isConnected || !box.isConnected) return;
+                try {
+                  const x = await api('backups.cloud.oauth.finish', { kind, state: r.state });
+                  if (x.pending) { if (Date.now() < deadline) setTimeout(poll, Math.max(3, r.interval || 5) * 1000); else $('[data-wait]', box).textContent = "The waiting time has run out. Press “Connect Google Drive” again."; return; }
+                  await finishOk(x);
+                } catch (e) { if (box.isConnected) $('[data-wait]', box).textContent = e.message; }
+              };
+              setTimeout(poll, Math.max(3, r.interval || 5) * 1000);
+            }
+          } catch (e) { fail(e); }
+          finally { btn.disabled = false; }
+        }));
         const preset = $('[data-preset]', where);
         preset.onchange = () => {
           const x = presets.find((q) => q[0] === preset.value);
@@ -896,7 +982,7 @@ async function backupSettingsForm() {
           const controls = $$('button, input, select',body);
           controls.forEach(control => { control.disabled = true; });
           try {
-            const result = await api('backups.ftp.save', {target:f.target || t,ftp:f.ftp,s3:f.s3,test,...(!test ? {schedule} : {})});
+            const result = await api('backups.ftp.save', {target:targetNow(),ftp:f.ftp,s3:f.s3,webdav:f.webdav,dropbox:f.dropbox,gdrive:f.gdrive,test,...(!test ? {schedule} : {})});
             toast(test ? result : "Saved",'ok');
             if (!test) m.close();
           } catch (e) { fail(e); }
@@ -906,7 +992,9 @@ async function backupSettingsForm() {
         $('[data-test]', where).onclick = () => send(true);
       };
       f.target = f.target || 'local';
-      draw(f.target);
+      f.mode = modeOfTarget(f.target);
+      f.svc = svcOfTarget(f.target);
+      draw(f.mode);
   } catch (e) {
     if (m.el.isConnected) { body.textContent = e.message; fail(e); }
   }
@@ -1626,9 +1714,22 @@ page('info', {
   async render(view) {
     head(view, "Server information", { actions: [{ t: "Panel address and SSL", i: 'lock', fn: () => panelSettingsForm().catch(fail) }, { t: "Reboot server", i: 'refresh', fn: () => rebootServer() }] });
     const a = panel(view, "Server");
+    const upd = panel(view, "Panel update");
     const b = panel(view, "Services");
-    const [d, monitor] = await Promise.all([api('system.info'), api('stats.monitor').catch(() => null)]);
+    const [d, monitor, auto] = await Promise.all([api('system.info'), api('stats.monitor').catch(() => null), api('updates.auto.get').catch(() => null)]);
     if (!view.isConnected) return;
+    if (auto) {
+      const modes = [['off', "Off: update manually"], ['patch', "Automatically only fixes (for example, 0.2.1 → 0.2.2)"], ['all', "Automatically all new releases"]];
+      upd.innerHTML = `<div class="field"><label for="au-mode">Automatic update</label><select id="au-mode">${modes.map(([v, n]) => `<option value="${v}" ${v === auto.mode ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+        <div class="field" data-au-hour ${auto.mode === 'off' ? 'style="display:none"' : ''}><label for="au-hour">Installation time</label><select id="au-hour">${[...Array(24).keys()].map((x) => `<option value="${x}" ${x === (auto.hour || 0) ? 'selected' : ''}>${String(x).padStart(2, '0')}:00</option>`).join('')}</select></div>
+        <p class="muted" style="margin:0 0 14px">Panel version: ${h(auto.version)}. The update is verified by its signature and checksum, and a copy of the program and settings is saved before installing. You will get a notification with the result. You can still update manually at any time with the “Updates” button in the top bar.</p>
+        <button class="btn primary" data-au-save>Save</button>`;
+      const sel = $('#au-mode', upd);
+      sel.onchange = () => { $('[data-au-hour]', upd).style.display = sel.value === 'off' ? 'none' : ''; };
+      $('[data-au-save]', upd).onclick = async () => {
+        try { await api('updates.auto.save', { mode: sel.value, hour: +$('#au-hour', upd).value }); toast("Saved", 'ok'); } catch (e) { fail(e); }
+      };
+    } else upd.remove();
     const serviceRows = monitor ? monitor.services.map(s => ({...s, active:s.state === 'running', manageable:d.services.some(item => item.name === s.name)})) : d.services.map(s => ({...s, manageable:true}));
     a.innerHTML = `<div class="kv">
       <div>Server name</div><div><b>${h(d.hostname)}</b></div>

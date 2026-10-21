@@ -288,6 +288,7 @@ func autoBackups() {
 func registerBackups() {
 	registerBackupBrowse()
 	registerBackupFTP()
+	registerBackupCloud()
 	api("backups.list", func(q *Req) (any, error) {
 		mu.Lock()
 		defer mu.Unlock()

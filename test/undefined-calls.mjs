@@ -53,7 +53,7 @@ test('panel UI uses only defined functions and values', () => {
       if (node.type === 'ReturnStatement' || node.type === 'ArrowFunctionExpression') ref(node.argument || (node.expression ? node.body : null));
     });
   }
-  const browser = new Set([...Object.getOwnPropertyNames(globalThis), 'fetch', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame', 'alert', 'confirm', 'getComputedStyle', 'matchMedia', 'Terminal', 'FitAddon', 'document', 'window', 'navigator', 'location', 'history', 'localStorage', 'sessionStorage', 'ResizeObserver', 'MutationObserver', 'IntersectionObserver', 'XMLHttpRequest', 'FormData', 'Blob', 'File', 'FileReader', 'WebSocket', 'Image', 'Node', 'HTMLElement', 'Event', 'CustomEvent', 'KeyboardEvent', 'ClipboardItem', 'screen']);
+  const browser = new Set([...Object.getOwnPropertyNames(globalThis), 'fetch', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame', 'alert', 'confirm', 'getComputedStyle', 'matchMedia', 'Terminal', 'FitAddon', 'qrcode', 'document', 'window', 'navigator', 'location', 'history', 'localStorage', 'sessionStorage', 'ResizeObserver', 'MutationObserver', 'IntersectionObserver', 'XMLHttpRequest', 'FormData', 'Blob', 'File', 'FileReader', 'WebSocket', 'Image', 'Node', 'HTMLElement', 'Event', 'CustomEvent', 'KeyboardEvent', 'ClipboardItem', 'screen']);
   const missing = [...called].filter(([name]) => !declared.has(name) && !browser.has(name)).map(([name, file]) => `${name} (${file})`);
   assert.deepEqual(missing, []);
 });

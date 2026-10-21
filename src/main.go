@@ -25,7 +25,7 @@ var webFS embed.FS
 //go:embed templates
 var tplFS embed.FS
 
-var Version = "0.2.1"
+var Version = "0.2.2"
 
 type Config struct {
 	Listen   string // адрес панели, по умолчанию :3333
@@ -130,6 +130,16 @@ func main() {
 			fmt.Println("Пароль администратора изменён")
 		}
 		return
+	case "2fa-off":
+		mustLoad()
+		cliDisable2FA()
+		fmt.Println("Двухэтапная аутентификация отключена")
+		return
+	case "allow-all-ips":
+		mustLoad()
+		cliAllowAllIPs()
+		fmt.Println("Ограничение доступа по IP снято: панель открыта с любого адреса")
+		return
 	case "login":
 		mustLoad()
 		if flag.Arg(1) == "" {
@@ -209,7 +219,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              cfg.Listen,
-		Handler:           panelDirectGuard(logRequests(languageMiddleware(mux))),
+		Handler:           panelDirectGuard(panelIPGuard(logRequests(languageMiddleware(mux)))),
 		ReadHeaderTimeout: 20 * time.Second,
 		IdleTimeout:       90 * time.Second,
 		MaxHeaderBytes:    64 << 10,

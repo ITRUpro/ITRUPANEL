@@ -164,6 +164,21 @@ func (g *loginGuardState) finish(ip string, success bool, now time.Time) error {
 	g.err = g.saveLocked()
 	return g.err
 }
+
+// finishNeutral завершает попытку, не считая её ни успехом, ни ошибкой: пароль верный, но нужен код второго шага.
+// Прежние ошибки с этого адреса остаются, поэтому перебор кодов этим путём не обнулить.
+func (g *loginGuardState) finishNeutral(ip string) error {
+	g.Lock()
+	defer g.Unlock()
+	r := g.records[ip]
+	if r == nil {
+		return fmt.Errorf("Попытка входа не зарегистрирована")
+	}
+	r.Pending--
+	g.active--
+	g.err = g.saveLocked()
+	return g.err
+}
 func (g *loginGuardState) unban(ip string) error {
 	g.Lock()
 	defer g.Unlock()

@@ -275,9 +275,17 @@ func impFromITRUPANEL(ctx context.Context, c *itruClient, inv *ImpInventory) err
 		inv.PHPVersions = info.PHPVersions
 		if info.Backup.Target != "" {
 			inv.Backup = &ImpBackup{Target: info.Backup.Target, Host: info.Backup.FTP.Host, Dir: info.Backup.FTP.Dir, Daily: info.Backup.Daily, Keep: info.Backup.Keep, Hour: info.Backup.Hour}
-			if backupTargetIsS3(info.Backup.Target) {
+			switch cloudKindOfTarget(info.Backup.Target) {
+			case cloudS3:
 				inv.Backup.Host = strings.TrimPrefix(strings.TrimPrefix(info.Backup.S3.Endpoint, "https://"), "http://")
 				inv.Backup.Dir = strings.Trim(info.Backup.S3.Bucket+"/"+info.Backup.S3.Prefix, "/")
+			case cloudWebDAV:
+				inv.Backup.Host = strings.TrimPrefix(strings.TrimPrefix(info.Backup.DAV.URL, "https://"), "http://")
+				inv.Backup.Dir = info.Backup.DAV.Dir
+			case cloudDropbox:
+				inv.Backup.Host, inv.Backup.Dir = "Dropbox", info.Backup.Dropbox.Dir
+			case cloudGDrive:
+				inv.Backup.Host, inv.Backup.Dir = "Google Drive", info.Backup.GDrive.Dir
 			}
 		}
 		for _, es := range info.Sites {

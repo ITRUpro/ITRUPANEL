@@ -441,6 +441,7 @@ function showLogin() {
     <div class="login-language">${languageControl()}</div>
     <div class="field"><label>Username</label><input type="text" name="user" value="" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
     <div class="field"><label>Password</label><input type="password" name="password" autocomplete="current-password" autofocus></div>
+    <div class="field" data-code-field style="display:none"><label>Verification code</label><input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" autocapitalize="none" spellcheck="false" maxlength="24" placeholder="123456 or a recovery code"></div>
     <p class="err"></p>
     <button class="btn primary">Sign in</button>
     <div class="app-copyright login-copyright">${panelCopyright()}</div></form></div>`;
@@ -450,9 +451,10 @@ function showLogin() {
     e.preventDefault();
     const btn = $('button', f);
     btn.disabled = true;
-    const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: f.user.value, password: f.password.value }) }).then((r) => r.json()).catch(() => ({ error: "Cannot reach server" }));
+    const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: f.user.value, password: f.password.value, code: f.code.value }) }).then((r) => r.json()).catch(() => ({ error: "Cannot reach server" }));
     btn.disabled = false;
     if (r.error) { $('.err', f).textContent = r.error; return; }
+    if (r.need_code) { $('[data-code-field]', f).style.display = ''; $('.err', f).textContent = ''; f.code.focus(); return; }
     resetUpdateOffer();
     start();
   };

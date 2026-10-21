@@ -63,6 +63,7 @@ type PanelUpdateRun struct {
 	Total      int64     `json:"total"`
 	Log        string    `json:"log"`
 	Error      string    `json:"error,omitempty"`
+	Auto       bool      `json:"auto,omitempty"` // запущено автоматически по расписанию
 }
 
 var releaseVersionRE = regexp.MustCompile(`^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$`)
@@ -313,6 +314,15 @@ func copyUpdateFile(src, dst string, mode os.FileMode) error {
 	return ce
 }
 func startPanelUpdate(version, sha string) (*PanelUpdateRun, error) {
+	return startPanelUpdateMode(version, sha, false)
+}
+
+// startPanelUpdateAuto запускает обновление по расписанию; в остальном оно не отличается от ручного.
+func startPanelUpdateAuto(version, sha string) (*PanelUpdateRun, error) {
+	return startPanelUpdateMode(version, sha, true)
+}
+
+func startPanelUpdateMode(version, sha string, auto bool) (*PanelUpdateRun, error) {
 	if reason := updateSupportReason(); reason != "" {
 		return nil, errf("%s", reason)
 	}
@@ -370,7 +380,7 @@ func startPanelUpdate(version, sha string) (*PanelUpdateRun, error) {
 	if e = os.WriteFile(filepath.Join(dir, "release.json"), r.Envelope, 0600); e != nil {
 		return nil, e
 	}
-	job := &PanelUpdateRun{ID: id, Version: r.Version, State: "queued", Stage: "Запуск службы обновления", Unit: "itrupanel-online-update-" + id, Started: time.Now(), Updated: time.Now(), Total: r.Size}
+	job := &PanelUpdateRun{ID: id, Version: r.Version, State: "queued", Stage: "Запуск службы обновления", Unit: "itrupanel-online-update-" + id, Started: time.Now(), Updated: time.Now(), Total: r.Size, Auto: auto}
 	if e = writeUpdateJSON(updateStatusPath(), job); e != nil {
 		return nil, e
 	}

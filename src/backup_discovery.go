@@ -316,8 +316,8 @@ func backupSourceMismatch(b *Backup) string {
 	if b.RemoteSource == "" {
 		return ""
 	}
-	if backupIsS3Source(b.RemoteSource) {
-		if c, err := s3Normalize(store.Settings.BackupS3); err != nil || b.RemoteSource != backupS3Source(c) {
+	if kind := cloudKindOfSource(b.RemoteSource); kind != "" {
+		if cl, err := cloudStoreFromSettings(kind, store.Settings); err != nil || b.RemoteSource != cl.Source() {
 			return "Подключите исходное облачное хранилище этой копии"
 		}
 		return ""

@@ -342,11 +342,14 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ip := clientIP(r)
-	var in struct{ User, Password string }
+	var in struct {
+		User, Password string
+		Code           string `json:"code"`
+	}
 	_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(10 * time.Second))
 	r.Body = http.MaxBytesReader(w, r.Body, 4096)
 	dec := json.NewDecoder(r.Body)
-	if e := dec.Decode(&in); e != nil || len(in.User) > 256 || len(in.Password) > 1024 {
+	if e := dec.Decode(&in); e != nil || len(in.User) > 256 || len(in.Password) > 1024 || len(in.Code) > 64 {
 		writeJSON(w, 400, map[string]any{"error": "Некорректный запрос входа"})
 		return
 	}
@@ -374,6 +377,26 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	// Compare for all usernames to avoid a cheap username oracle.
 	passwordOK := bcrypt.CompareHashAndPassword([]byte(hash), []byte(in.Password)) == nil
 	success := validUser && passwordOK
+	badCode := false
+	if success {
+		mu.Lock()
+		second := store.Settings.TOTPEnabled
+		mu.Unlock()
+		if second {
+			if strings.TrimSpace(in.Code) == "" {
+				// Пароль верный, нужен код: попытка не считается ошибкой, но и не сбрасывает прежние.
+				if e := loginGuard.finishNeutral(ip); e != nil {
+					writeJSON(w, 503, map[string]any{"error": "Защита входа временно недоступна"})
+					return
+				}
+				writeJSON(w, 200, map[string]any{"need_code": true})
+				return
+			}
+			if !secondFactorOK(in.Code) {
+				success, badCode = false, true
+			}
+		}
+	}
 	if e := loginGuard.finish(ip, success, time.Now()); e != nil {
 		log.Printf("login guard persistence: %v", e)
 		writeJSON(w, 503, map[string]any{"error": "Защита входа временно недоступна"})
@@ -381,6 +404,10 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	if !success {
 		appendJSONL("visits.jsonl", VisitEntry{time.Now(), in.User, ip, r.UserAgent(), false, "fail"})
+		if badCode {
+			writeJSON(w, 200, map[string]any{"error": "Неверный код подтверждения"})
+			return
+		}
 		writeJSON(w, 200, map[string]any{"error": "Неверный логин или пароль"})
 		return
 	}
@@ -401,6 +428,8 @@ func registerAll() {
 	registerImportExport()
 	registerFeedback()
 	registerPanelUpdates()
+	registerPanelAutoUpdate()
+	registerLoginSecurity()
 	api("me", func(q *Req) (any, error) {
 		mu.Lock()
 		defer mu.Unlock()

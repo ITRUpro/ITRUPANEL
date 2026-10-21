@@ -436,6 +436,7 @@ func schedulerLoop() {
 			avAutoScan(now)
 			avAutoUpdateDB(now)
 		}
+		panelAutoUpdateTick(now)
 		os.MkdirAll(P(sockDir), 0755)
 		time.Sleep(5 * time.Minute)
 	}

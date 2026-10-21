@@ -69,16 +69,19 @@ func impFTPHashes() map[string]string {
 }
 
 type impExportBackup struct {
-	Target        string    `json:"target"`
-	FTP           BackupFTP `json:"ftp"`
-	S3            BackupS3  `json:"s3"`
-	Daily         bool      `json:"daily"`
-	Keep          int       `json:"keep"`
-	Hour          int       `json:"hour"`
-	Mode          string    `json:"mode"`
-	SiteSettings  bool      `json:"site_settings"`
-	PanelSettings bool      `json:"panel_settings"`
-	SkipDBs       bool      `json:"skip_dbs"`
+	Target        string        `json:"target"`
+	FTP           BackupFTP     `json:"ftp"`
+	S3            BackupS3      `json:"s3"`
+	DAV           BackupWebDAV  `json:"webdav"`
+	Dropbox       BackupDropbox `json:"dropbox"`
+	GDrive        BackupGDrive  `json:"gdrive"`
+	Daily         bool          `json:"daily"`
+	Keep          int           `json:"keep"`
+	Hour          int           `json:"hour"`
+	Mode          string        `json:"mode"`
+	SiteSettings  bool          `json:"site_settings"`
+	PanelSettings bool          `json:"panel_settings"`
+	SkipDBs       bool          `json:"skip_dbs"`
 }
 
 type impExportDB struct {
@@ -171,8 +174,15 @@ func registerImportExport() {
 		if bk.Target == "ftp" || bk.Target == "both" {
 			bk.FTP = bs.BackupFTP
 		}
-		if backupTargetIsS3(bk.Target) {
+		switch cloudKindOfTarget(bk.Target) {
+		case cloudS3:
 			bk.S3 = bs.BackupS3
+		case cloudWebDAV:
+			bk.DAV = bs.BackupDAV
+		case cloudDropbox:
+			bk.Dropbox = bs.BackupDropbox
+		case cloudGDrive:
+			bk.GDrive = bs.BackupGDrive
 		}
 		mu.Unlock()
 		out["dns"], out["ftp"], out["mail"], out["backup"] = zones, ftpUsers, m, bk

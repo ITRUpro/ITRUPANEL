@@ -41,31 +41,35 @@ type backupMetadata struct {
 // Portable preferences only. Authentication, sessions, panel address, TLS keys,
 // and resource inventories are deliberately not copied into a site backup.
 type panelBackupSettings struct {
-	Email               string    `json:"email"`
-	DefaultPHP          string    `json:"default_php"`
-	DNSNameservers      []string  `json:"dns_nameservers"`
-	DNSMail             bool      `json:"dns_mail"`
-	DiskWarn            int       `json:"disk_warn"`
-	BackupDaily         bool      `json:"backup_daily"`
-	BackupKeep          int       `json:"backup_keep"`
-	BackupHour          int       `json:"backup_hour"`
-	BackupTarget        string    `json:"backup_target"`
-	BackupFTP           BackupFTP `json:"backup_ftp"`
-	BackupS3            BackupS3  `json:"backup_s3"`
-	BackupSiteSettings  bool      `json:"backup_site_settings"`
-	BackupPanelSettings bool      `json:"backup_panel_settings"`
-	BackupMode          string    `json:"backup_mode"`
-	BackupSkipDBs       bool      `json:"backup_skip_dbs,omitempty"`
+	Email               string        `json:"email"`
+	DefaultPHP          string        `json:"default_php"`
+	DNSNameservers      []string      `json:"dns_nameservers"`
+	DNSMail             bool          `json:"dns_mail"`
+	DiskWarn            int           `json:"disk_warn"`
+	BackupDaily         bool          `json:"backup_daily"`
+	BackupKeep          int           `json:"backup_keep"`
+	BackupHour          int           `json:"backup_hour"`
+	BackupTarget        string        `json:"backup_target"`
+	BackupFTP           BackupFTP     `json:"backup_ftp"`
+	BackupS3            BackupS3      `json:"backup_s3"`
+	BackupDAV           BackupWebDAV  `json:"backup_dav"`
+	BackupDropbox       BackupDropbox `json:"backup_dropbox"`
+	BackupGDrive        BackupGDrive  `json:"backup_gdrive"`
+	BackupSiteSettings  bool          `json:"backup_site_settings"`
+	BackupPanelSettings bool          `json:"backup_panel_settings"`
+	BackupMode          string        `json:"backup_mode"`
+	BackupSkipDBs       bool          `json:"backup_skip_dbs,omitempty"`
 }
 
 func capturePanelBackupSettings(s Settings) panelBackupSettings {
-	return panelBackupSettings{s.Email, s.DefaultPHP, append([]string(nil), s.DNSNameservers...), s.DNSMail, s.DiskWarn, s.BackupDaily, s.BackupKeep, s.BackupHour, s.BackupTarget, s.BackupFTP, s.BackupS3, s.BackupSiteSettings, s.BackupPanelSettings, s.BackupMode, s.BackupSkipDBs}
+	return panelBackupSettings{s.Email, s.DefaultPHP, append([]string(nil), s.DNSNameservers...), s.DNSMail, s.DiskWarn, s.BackupDaily, s.BackupKeep, s.BackupHour, s.BackupTarget, s.BackupFTP, s.BackupS3, s.BackupDAV, s.BackupDropbox, s.BackupGDrive, s.BackupSiteSettings, s.BackupPanelSettings, s.BackupMode, s.BackupSkipDBs}
 }
 func (p panelBackupSettings) apply(s *Settings) {
 	s.BackupMode, s.BackupSkipDBs = p.BackupMode, p.BackupSkipDBs
 	s.Email, s.DefaultPHP, s.DNSNameservers, s.DNSMail, s.DiskWarn = p.Email, p.DefaultPHP, append([]string(nil), p.DNSNameservers...), p.DNSMail, p.DiskWarn
 	s.BackupDaily, s.BackupKeep, s.BackupHour = p.BackupDaily, p.BackupKeep, p.BackupHour
 	s.BackupTarget, s.BackupFTP, s.BackupS3 = p.BackupTarget, p.BackupFTP, p.BackupS3
+	s.BackupDAV, s.BackupDropbox, s.BackupGDrive = p.BackupDAV, p.BackupDropbox, p.BackupGDrive
 	s.BackupSiteSettings, s.BackupPanelSettings = p.BackupSiteSettings, p.BackupPanelSettings
 }
 func (p panelBackupSettings) validate() error {
@@ -75,7 +79,7 @@ func (p panelBackupSettings) validate() error {
 	if p.BackupKeep < 1 || p.BackupKeep > 60 || p.BackupHour < 0 || p.BackupHour > 23 || p.DiskWarn < 1 || p.DiskWarn > 100 {
 		return errf("Некорректные настройки панели в копии")
 	}
-	if p.BackupTarget != "" && p.BackupTarget != "local" && p.BackupTarget != "ftp" && p.BackupTarget != "both" && !backupTargetIsS3(p.BackupTarget) {
+	if p.BackupTarget != "" && p.BackupTarget != "local" && p.BackupTarget != "ftp" && p.BackupTarget != "both" && !backupTargetIsCloud(p.BackupTarget) {
 		return errf("Неверное место хранения в копии")
 	}
 	if p.BackupTarget == "ftp" || p.BackupTarget == "both" {
@@ -83,9 +87,22 @@ func (p panelBackupSettings) validate() error {
 			return errf("Некорректные настройки FTP в копии")
 		}
 	}
-	if backupTargetIsS3(p.BackupTarget) {
+	switch cloudKindOfTarget(p.BackupTarget) {
+	case cloudS3:
 		if _, err := s3Normalize(p.BackupS3); err != nil {
 			return errf("Некорректные настройки облака в копии")
+		}
+	case cloudWebDAV:
+		if _, err := davNormalize(p.BackupDAV); err != nil {
+			return errf("Некорректные настройки WebDAV в копии")
+		}
+	case cloudDropbox:
+		if _, err := dropboxNormalize(p.BackupDropbox); err != nil {
+			return errf("Некорректные настройки Dropbox в копии")
+		}
+	case cloudGDrive:
+		if _, err := gdriveNormalize(p.BackupGDrive); err != nil {
+			return errf("Некорректные настройки Google Drive в копии")
 		}
 	}
 	for _, name := range p.DNSNameservers {
