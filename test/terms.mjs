@@ -9,7 +9,7 @@ function harness(lang='ru') {
  nodes['.terms-card'].querySelector=k=>nodes[k];
  const calls=[];let shell=0,routes=0,login=0;let failAccept=false,failLoad=false;
  const c=vm.createContext({document:{addEventListener(){},querySelector:k=>k==='#app'?app:nodes[k],querySelectorAll:()=>[],documentElement:{dataset:{}}},window:{addEventListener(){}},localStorage:{getItem:()=>null},languageControl:()=>'',panelCopyright:()=>'',setInterval(){},clearInterval(){},fakeAPI:async(n,d)=>{calls.push([n,d]);if(n==='terms.get'){if(failLoad)throw Error('offline');return {text:'Fixture terms',revision:'1.0',sha256:'fixture'}}if(n==='terms.accept'&&failAccept)throw Error('disk full');return {user:'admin',terms_required:false}},shell:()=>shell++,routed:()=>routes++,login:()=>login++});
- vm.runInContext(fs.readFileSync(lang==='en'?'web/en/app.js':'web/app.js','utf8'),c);
+ vm.runInContext(fs.readFileSync(lang==='en'?'src/web/en/app.js':'src/web/app.js','utf8'),c);
  vm.runInContext('api=fakeAPI;renderShell=shell;route=routed;showLogin=login;App.me={user:"admin",terms_required:true};',c);
  return {c,nodes,calls,app,shell:()=>shell,routes:()=>routes,failAccept:v=>failAccept=v,failLoad:v=>failLoad=v,login:()=>login};
 }
@@ -31,5 +31,5 @@ for(const lang of ['ru','en']) {
  });
 }
 test('hash navigation cannot render pages while terms are pending',async()=>{
- const h=harness();vm.runInContext('route = '+fs.readFileSync('web/app.js','utf8').match(/async function route\(\) \{[\s\S]*?\n\}/)[0]+';',h.c);await h.c.route();assert.equal(h.shell(),0);assert.equal(h.calls.length,0);
+ const h=harness();vm.runInContext('route = '+fs.readFileSync('src/web/app.js','utf8').match(/async function route\(\) \{[\s\S]*?\n\}/)[0]+';',h.c);await h.c.route();assert.equal(h.shell(),0);assert.equal(h.calls.length,0);
 });

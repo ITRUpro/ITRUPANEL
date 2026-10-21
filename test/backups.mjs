@@ -10,7 +10,7 @@ function harness(lang='') {
  const c=vm.createContext({document:{addEventListener(){}},window:{addEventListener(){}},
   fakeAPI:async(name,data)=>{if(name==='sites.list')return[{site:{domain:'example.test'},unicode:'example.test'}];calls.push({name,data});},
   fakeForm:o=>{form=o;},fakeToast:()=>{},fakeRoute:()=>{}});
- for(const name of ['icons.js','app.js','pages.js']) vm.runInContext(readFileSync(new URL('../web/'+lang+name,import.meta.url),'utf8'),c);
+ for(const name of ['icons.js','app.js','pages.js']) vm.runInContext(readFileSync(new URL('../src/web/'+lang+name,import.meta.url),'utf8'),c);
  vm.runInContext('api=fakeAPI;openForm=fakeForm;toast=fakeToast;route=fakeRoute;',c);
  return {c,calls,get form(){return form;}};
 }

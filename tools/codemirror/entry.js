@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич). ITRUPANEL. Licensed under GPL-3.0-only (SPDX-License-Identifier: GPL-3.0-only). See LICENSE.txt
-// Точка входа сборки редактора кода: CodeMirror 6 → web/vendor/codemirror.js (global ITRUEditor).
+// Точка входа сборки редактора кода: CodeMirror 6 → src/web/vendor/codemirror.js (global ITRUEditor).
 import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
@@ -24,7 +24,7 @@ import { toml } from '@codemirror/legacy-modes/mode/toml';
 import { python } from '@codemirror/legacy-modes/mode/python';
 import { go } from '@codemirror/legacy-modes/mode/go';
 import { diff } from '@codemirror/legacy-modes/mode/diff';
-import { languageFor } from '../../web/vendor/editor-langs.mjs';
+import { languageFor } from '../../src/web/vendor/editor-langs.mjs';
 
 const legacy = (mode) => () => StreamLanguage.define(mode);
 // Название языка → создатель расширения. Названия показываются в строке состояния редактора.

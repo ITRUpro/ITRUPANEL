@@ -6,7 +6,7 @@ import vm from 'node:vm';
 
 function load(extra = {}) {
   const c = vm.createContext({ page() {}, watchJob() {}, toast() {}, route: async () => {}, fail(e) { throw e; }, h: s => String(s), icon: () => '', genPass: () => 'secret', ...extra });
-  vm.runInContext(fs.readFileSync('web/docker.js', 'utf8'), c);
+  vm.runInContext(fs.readFileSync('src/web/docker.js', 'utf8'), c);
   return c;
 }
 

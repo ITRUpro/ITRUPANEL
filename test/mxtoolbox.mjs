@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const source=fs.readFileSync('web/mail.js','utf8');
+const source=fs.readFileSync('src/web/mail.js','utf8');
 const h=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 function load(api){
  const nodes={};let html='',rows;

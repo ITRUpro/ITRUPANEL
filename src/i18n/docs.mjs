@@ -4,13 +4,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const rel = (p) => path.join(root, 'release', p);
 const data = JSON.parse(fs.readFileSync(rel('docs-content.json'), 'utf8'));
 
 // Защита: каждый пункт меню панели обязан быть описан в документации (источник — release/docs-src.py).
 {
-  const app = fs.readFileSync(path.join(root, 'web/app.js'), 'utf8');
+  const app = fs.readFileSync(path.join(root, 'src/web/app.js'), 'utf8');
   const nav = app.slice(app.indexOf('const NAV = ['), app.indexOf('const NAV_GROUPS'));
   const ids = [...nav.matchAll(/^\s*\['([a-z0-9]+)',/gm)].map((m) => m[1]);
   const have = new Set(data.sections.map((s) => s.id));

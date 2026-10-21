@@ -103,7 +103,7 @@ func TestAPTPreparationBackupAndOSScope(t *testing.T) {
 			}
 		})
 	}
-	data, err := os.ReadFile("install.sh")
+	data, err := os.ReadFile("../install.sh")
 	if err != nil {
 		t.Fatal(err)
 	}

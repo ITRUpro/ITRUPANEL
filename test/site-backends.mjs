@@ -16,7 +16,7 @@ function harness() {
     },
     fakeForm: (options) => { form = options; },
   });
-  for (const name of ['icons.js', 'app.js', 'pages.js']) vm.runInContext(readFileSync(new URL('../web/' + name, import.meta.url), 'utf8'), context);
+  for (const name of ['icons.js', 'app.js', 'pages.js']) vm.runInContext(readFileSync(new URL('../src/web/' + name, import.meta.url), 'utf8'), context);
   vm.runInContext('api = globalThis.fakeAPI; openForm = globalThis.fakeForm; toast = () => {}; route = () => {}; globalThis.watchJob = () => {};', context);
   return { context, saved, form: () => form };
 }

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич). ITRUPANEL. Licensed under GPL-3.0-only (SPDX-License-Identifier: GPL-3.0-only). See LICENSE.txt
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { languageFor } from '../web/vendor/editor-langs.mjs';
+import { languageFor } from '../src/web/vendor/editor-langs.mjs';
 
 test('язык подсветки определяется по имени и пути файла', () => {
   const cases = {

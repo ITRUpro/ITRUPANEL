@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const acorn = createRequire(import.meta.url)('../i18n/vendor/acorn.cjs');
+const acorn = createRequire(import.meta.url)('../src/i18n/vendor/acorn.cjs');
 
 function visit(node, cb) {
   if (!node || typeof node.type !== 'string') return;
@@ -30,8 +30,8 @@ test('panel UI uses only defined functions and values', () => {
     else if (pattern.type === 'AssignmentPattern') names(pattern.left);
     else if (pattern.type === 'RestElement') names(pattern.argument);
   };
-  for (const file of fs.readdirSync(path.join(root, 'web')).filter((f) => f.endsWith('.js'))) {
-    const tree = acorn.parse(fs.readFileSync(path.join(root, 'web', file), 'utf8'), { ecmaVersion: 'latest', sourceType: 'script' });
+  for (const file of fs.readdirSync(path.join(root, 'src/web')).filter((f) => f.endsWith('.js'))) {
+    const tree = acorn.parse(fs.readFileSync(path.join(root, 'src/web', file), 'utf8'), { ecmaVersion: 'latest', sourceType: 'script' });
     visit(tree, (node) => {
       if ((node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression') && node.id) declared.add(node.id.name);
       if (node.type === 'VariableDeclarator') names(node.id);

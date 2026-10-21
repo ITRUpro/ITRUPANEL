@@ -16,15 +16,15 @@ You need Go (the version in `go.mod`) and Node.js 20 or newer.
 ./build.sh                                   # translations, docs, and binaries for amd64 and arm64
 go vet ./... && go test ./...                # Go tests
 node --test test/*.mjs                       # interface tests
-go run . -demo -http -listen 127.0.0.1:3399  # try the interface; system commands are not executed
+go run ./src -demo -http -listen 127.0.0.1:3399  # try the interface; system commands are not executed
 ```
 
 Demo mode keeps its files in a temporary folder and never runs real system commands, so it is safe to experiment.
 
 ## Rules for changes
 
-- **Interface text** is written in Russian in `web/*.js`; the English text is in `i18n/en-ui.json` (UI) and
-  `i18n/en-server.json` (server messages). The build fails when a translation is missing.
+- **Interface text** is written in Russian in `src/web/*.js`; the English text is in `src/i18n/en-ui.json` (UI) and
+  `src/i18n/en-server.json` (server messages). The build fails when a translation is missing.
 - **Documentation:** describe every new feature in `release/docs-src.py`, in both Russian and English
   (`./build.sh` regenerates `docs.html` and `en/docs.html`).
 - **Tests:** add a Go test for server behaviour; the interface has Node tests in `test/`.
@@ -47,5 +47,5 @@ Demo mode keeps its files in a temporary folder and never runs real system comma
 
 ## Translations
 
-The panel has Russian and English interfaces. To improve a translation, edit `i18n/en-ui.json` or `i18n/en-server.json` and open a pull
+The panel has Russian and English interfaces. To improve a translation, edit `src/i18n/en-ui.json` or `src/i18n/en-server.json` and open a pull
 request. Proposals for new interface languages are welcome as an issue.

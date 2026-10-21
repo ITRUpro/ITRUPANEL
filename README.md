@@ -133,10 +133,10 @@ go test ./...             # unit tests
 Try the interface locally without touching your system — system commands are not executed in demo mode:
 
 ```bash
-go run . -demo -http -listen 127.0.0.1:3399
+go run ./src -demo -http -listen 127.0.0.1:3399
 ```
 
-The interface is plain JavaScript in `web/`; English text lives in `i18n/`. The code editor is a CodeMirror 6 bundle built from
+The interface is plain JavaScript in `src/web/`; English text lives in `src/i18n/`. The code editor is a CodeMirror 6 bundle built from
 `tools/codemirror`.
 
 ## Issues and support
@@ -148,7 +148,7 @@ The interface is plain JavaScript in `web/`; English text lives in `i18n/`. The 
 ## Contributing
 
 Pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). New interface text needs an English translation in
-`i18n/en-ui.json` (the build fails without it) and new features should be described in `release/docs-src.py`.
+`src/i18n/en-ui.json` (the build fails without it) and new features should be described in `release/docs-src.py`.
 
 ## Copyright and license
 

@@ -9,7 +9,7 @@ function fixture(lang='') {
  const elements=[subject,message,button];elements.include_version={checked:false};elements.consent={checked:true};elements.push(elements.include_version,elements.consent);
  const form={elements,reportValidity:()=>true,reset:()=>reset++};const panel={};
  const c=vm.createContext({page:(_,d)=>def=d,head:()=>{},panel:()=>panel,$:(s)=>s==='form'?form:s==='button'?button:state,FormData:class{constructor(){return [['subject',subject.value],['message',message.value],['category','question'],['email','']]}},crypto:webcrypto,Uint8Array,toast:()=>{},api:async(name,data)=>{calls.push({name,data});if(fail)throw Error('connection failed');return {id:'abcdef123456abcdef123456'}}});
- vm.runInContext(fs.readFileSync(new URL('../web/'+lang+'feedback.js',import.meta.url),'utf8'),c);
+ vm.runInContext(fs.readFileSync(new URL('../src/web/'+lang+'feedback.js',import.meta.url),'utf8'),c);
  return {async start(){await def.render({});},async submit(){await form.onsubmit({preventDefault(){}})},calls,state,subject,elements,button,success(){fail=false},get reset(){return reset}};
 }
 for(const lang of ['', 'en/']) test('feedback '+lang+' retains request ID on failure and changes it for edited input',async()=>{

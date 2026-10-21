@@ -8,8 +8,8 @@ Components / Компоненты
   1. github.com/gorilla/websocket v1.5.3 — BSD-2-Clause (compiled into the program)
   2. github.com/creack/pty v1.1.24 — MIT (compiled into the program)
   3. golang.org/x/crypto v0.58.0, golang.org/x/net v0.60.0, golang.org/x/text v0.43.0 — BSD-3-Clause, Copyright 2009 The Go Authors (compiled into the program)
-  4. xterm.js and xterm-addon-fit — MIT, Copyright (c) 2014 The xterm.js authors; Copyright (c) 2012-2013 Christopher Jeffrey (browser terminal, files in web/vendor)
-  5. CodeMirror 6, Lezer and their small helper packages (crelt, style-mod, w3c-keyname) — MIT, Copyright (C) by Marijn Haverbeke and others (code editor in the file manager, bundled as web/vendor/codemirror.js)
+  4. xterm.js and xterm-addon-fit — MIT, Copyright (c) 2014 The xterm.js authors; Copyright (c) 2012-2013 Christopher Jeffrey (browser terminal, files in src/web/vendor)
+  5. CodeMirror 6, Lezer and their small helper packages (crelt, style-mod, w3c-keyname) — MIT, Copyright (C) by Marijn Haverbeke and others (code editor in the file manager, bundled as src/web/vendor/codemirror.js)
   6. Acorn — MIT, Copyright (C) 2012-2022 by various contributors (build tool only; not shipped in the panel binary)
   7. The Go programming language and standard library — BSD-3-Clause, Copyright 2009 The Go Authors
 

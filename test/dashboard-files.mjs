@@ -25,7 +25,7 @@ function harness() {
     fakeAPI: (name, data) => new Promise((resolve, reject) => pending.push({ name, data, resolve, reject })),
     fakeForm: (options) => { form = options; return { el }; },
   });
-  for (const name of ['icons.js', 'app.js', 'pages.js']) vm.runInContext(readFileSync(new URL('../web/' + name, import.meta.url), 'utf8'), context);
+  for (const name of ['icons.js', 'app.js', 'pages.js']) vm.runInContext(readFileSync(new URL('../src/web/' + name, import.meta.url), 'utf8'), context);
   vm.runInContext('api = globalThis.fakeAPI; openForm = globalThis.fakeForm;', context);
   return {
     context, el, pending, chosen,

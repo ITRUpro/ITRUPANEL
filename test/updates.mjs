@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const source=fs.readFileSync('web/updates.js','utf8');
+const source=fs.readFileSync('src/web/updates.js','utf8');
 const h=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 test('global status prioritizes active work and failure',()=>{const c=vm.createContext({h});vm.runInContext(source,c);for(const [data,label] of [[{available:true,release:{version:'0.1.20'}},'Доступно обновление 0.1.20'],[{run:{state:'running'},available:true},'Обновление…'],[{run:{state:'error'},available:true},'Ошибка обновления'],[{error:'offline'},'Проверить обновления']]){c.data=data;assert.equal(vm.runInContext('updateButtonLabel(data)',c),label);}});
 test('unverified feed failure never claims latest version',()=>{const c=vm.createContext({h});vm.runInContext(source,c);c.data={current:'0.1.15',error:'bad signature',release:{version:'0.1.15',released:'2026-10-08',notes:['<script>alert(1)</script>']}};const html=vm.runInContext('updateOverview(data)',c);assert.ok(!html.includes('Актуальная версия установлена'));assert.ok(html.includes('&lt;script>'));});

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const source=fs.readFileSync('web/mail_dns.js','utf8');
+const source=fs.readFileSync('src/web/mail_dns.js','utf8');
 const h=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 test('copy includes MX priority; failed clipboard is not reported as successful',async()=>{
  let copied,notifications=0;

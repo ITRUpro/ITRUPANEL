@@ -29,7 +29,7 @@ function harness() {
     $:(s,el)=>el?el.querySelector(s):cards.findLast(c=>!c.removed),
     fmtBytes:(n)=>Math.round(n)+' Б',plural:(n)=>n+' файлов',toast:(t)=>notices.push(t),fail:(e)=>{throw e;},
   });
-  vm.runInContext(readFileSync(new URL('../web/uploads.js',import.meta.url),'utf8'),context);
+  vm.runInContext(readFileSync(new URL('../src/web/uploads.js',import.meta.url),'utf8'),context);
   const files=[{name:'<archive>.zip',size:1000}];
   return {context,requests,changes,files,cards,timers,events,notices,
     start:()=>context.sendFileUpload(files,'/api/files/upload?path='+encodeURIComponent('/var/www/a b'),p=>changes.push(p)),
