@@ -10,7 +10,7 @@ All notable changes to ITRUPANEL. Release archives and checksums: https://itrupa
 - **Other server over SSH** (ISPmanager, HestiaCP, aaPanel and others): websites, databases and cron jobs
 - verified end to end against a real FASTPANEL installation (sites, PHP, database with data, cron, FTP login and IMAP login with the old passwords, a moved message)
 - not moved from FASTPANEL: DNS (it lives at external providers), mail aliases and forwards, SSL certificates, Node.js applications
-- WebDAV (Yandex Disk, Mail.ru Cloud and others): **Check connection** now runs every step of a backup (sign-in, folder, writing 64 B and 2 MB, reading, deleting) and on failure shows the server's answer for each step; folders are created only when missing
+- WebDAV (Yandex Disk, Mail.ru Cloud and others): **Check connection** now runs every step of a backup (sign-in, free space, folder, writing 64 B and 2 MB, reading, deleting), shows the server's answer for each step on failure and reports a lack of free space directly; folders are created only when missing
 
 ## 0.2.3
 

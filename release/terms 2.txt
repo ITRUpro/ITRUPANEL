@@ -1,0 +1,45 @@
+Условия использования ITRUPANEL
+Редакция 2.0 · 21 октября 2026 года
+© 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич)
+
+1. Лицензия
+ITRUPANEL — свободное программное обеспечение. Оно распространяется на условиях GNU General Public License версии 3 (SPDX: GPL-3.0-only); полный текст лицензии находится в файле LICENSE.txt. Вы вправе запускать панель для любых целей, изучать и изменять её исходный код, распространять копии и свои изменённые версии на условиях этой лицензии. Использование панели бесплатно, в том числе для коммерческих задач и услуг хостинга.
+
+2. Исходный код
+Исходный код опубликован по адресу https://github.com/ITRUpro/ITRUPANEL. Если вы распространяете панель или её изменённую версию, лицензия GPL требует передавать получателям соответствующий исходный код на тех же условиях и сохранять уведомления об авторстве и лицензии.
+
+3. Название и логотип
+Лицензия GPL не передаёт прав на название ITRUPANEL, логотип и доменное имя itrupanel.com. Изменённую версию или собственную услугу нельзя выдавать за официальную или одобренную правообладателем без его согласия; для изменённых версий используйте другое название.
+
+4. Сторонние компоненты
+Условия не ограничивают права, предоставленные лицензиями сторонних библиотек и программ; их перечень и тексты уведомлений — в файле THIRD-PARTY-NOTICES.txt. Они не заменяют лицензий Linux, nginx, PHP, MariaDB и других устанавливаемых программ.
+
+5. Гарантии и ответственность
+Панель предоставляется «как есть», без каких-либо гарантий, в пределах, допускаемых применимым законом (разделы 15 и 16 лицензии GPL). Пользователь отвечает за резервные копии, безопасность и законность работы своего сервера. Бесплатная поддержка и сроки выпуска обновлений не гарантируются.
+
+6. Предыдущие условия
+Выпуски, полученные на прежних условиях бесплатного использования (редакция 1.0), можно продолжать использовать на этих условиях; начиная с версии 0.2.1 действует лицензия GPL-3.0.
+
+ENGLISH TRANSLATION — Russian text prevails in case of differences.
+
+ITRUPANEL terms of use
+Edition 2.0 · 21 October 2026
+© 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич)
+
+1. License
+ITRUPANEL is free software. It is distributed under the GNU General Public License version 3 (SPDX: GPL-3.0-only); the full license text is in the file LICENSE.txt. You may run the panel for any purpose, study and modify its source code, and distribute copies and your modified versions under the terms of that license. Using the panel is free of charge, including for commercial work and hosting services.
+
+2. Source code
+The source code is published at https://github.com/ITRUpro/ITRUPANEL. If you distribute the panel or a modified version, the GPL requires you to give recipients the corresponding source code under the same terms and to keep the copyright and license notices.
+
+3. Name and logo
+The GPL does not grant rights to the name ITRUPANEL, the logo or the domain name itrupanel.com. A modified version or your own service must not be presented as official or endorsed by the copyright holder without permission; use a different name for modified versions.
+
+4. Third-party components
+These terms do not restrict rights granted by the licenses of third-party libraries and programs; they are listed, with their notices, in THIRD-PARTY-NOTICES.txt. They do not replace the licenses of Linux, nginx, PHP, MariaDB or other installed software.
+
+5. Warranty and liability
+The panel is provided “as is”, without warranty of any kind, to the extent permitted by applicable law (sections 15 and 16 of the GPL). Users are responsible for backups, security and lawful operation of their servers. Free support and update schedules are not guaranteed.
+
+6. Previous terms
+Releases received under the earlier free-use terms (edition 1.0) may continue to be used under those terms; from version 0.2.1 the GPL-3.0 license applies.
