@@ -2,6 +2,10 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.5
+
+Minor bug fixes.
+
 ## 0.2.4
 
 **Import from FASTPANEL and a step-by-step WebDAV connection check.**
