@@ -66,7 +66,7 @@ The panel is **free for personal and commercial use**, including hosting for you
 | **DNS and SSL** | BIND zones and records, Let’s Encrypt with automatic issue and renewal, self-signed and custom certificates |
 | **Files and FTP** | Browser file manager with a code editor (syntax highlighting, find and replace), recycle bin, Pure-FTPd users |
 | **Backups** | Files, databases and settings; full and incremental chains; stored on the server, on FTP or in the cloud — Yandex Disk, Mail.ru Cloud, Dropbox, Google Drive, any WebDAV (Nextcloud, ownCloud) or any S3-compatible storage (Amazon S3, Yandex Object Storage, Cloudflare R2, Wasabi, DigitalOcean Spaces, MinIO), alone or together with the server; browse a backup and restore only what you need |
-| **Import** | Move websites, databases, mail (messages and passwords included), DNS zones, FTP users, cron jobs and backup settings from another ITRUPANEL server using only its address and administrator login |
+| **Import** | Move websites, databases, mail (messages and passwords included), DNS zones, FTP users, cron jobs and backup settings from another ITRUPANEL server using only its address and administrator login; from **FASTPANEL** over SSH (websites, databases and FTP and mail users with their old passwords, mail messages, cron); from any other server over SSH (websites, databases, cron) |
 | **Docker** | Containers, Compose projects, images, networks, volumes, cleanup |
 | **Security** | Per-site request limits, login protection with Fail2ban for FTP, two-step authentication (TOTP) and access to the panel only from selected IP addresses, incoming-connection firewall, antivirus with optional ClamAV, quarantine and cleanup from backups |
 | **Monitoring** | Dashboard, resource history, traffic per site, disk usage, site logs, operations log, background tasks, notifications |
@@ -116,7 +116,12 @@ update from the **Updates** button inside the panel.
 
 ## Moving from another server
 
-On the new server open **Import data**, enter the address and administrator login of the old ITRUPANEL and choose what to move.
+On the new server open **Import data**, choose where you are moving from and what to move:
+
+- **ITRUPANEL** — enter the address and administrator login of the old panel;
+- **FASTPANEL** — enter the server address and root (or sudo) access over SSH; the panel reads the lists from FASTPANEL itself and moves websites, databases, FTP users, mail with messages and cron jobs, keeping the old passwords;
+- **other server over SSH** (ISPmanager, HestiaCP, aaPanel and others) — websites, databases and cron jobs.
+
 Missing PHP versions are installed automatically; the import works between Debian, Ubuntu, AlmaLinux and Rocky Linux.
 
 ## Building from source

@@ -4,15 +4,18 @@ All notable changes to ITRUPANEL. Release archives and checksums: https://itrupa
 
 ## 0.2.7
 
-Minor bug fixes.
+- the installer checks the server before installing and shows the result: operating system, architecture, root, systemd, memory, free disk space, access to itrupanel.com and the ports 80, 443 and 3333 (in Russian or English, by the server locale); warnings do not stop the installation
+- the website shows the current version and the download link taken from `panel/latest.json`, so the page does not have to be rewritten for every release
 
 ## 0.2.6
 
-Minor bug fixes.
+- the terminal of a Docker container is light like the rest of the interface (the Shell client of the server stays dark)
 
 ## 0.2.5
 
-Minor bug fixes.
+- the **Stored** column of the backup table says **Cloud** for every cloud kind (Yandex Disk, Mail.ru Cloud, Dropbox, Google Drive, S3) instead of "FTP"; backups attached from a cloud are marked "Imported from the cloud"
+- downloading a database or selected files from a backup starts at once, without a task window
+- task output and other service texts are plain text on a light background instead of a dark box
 
 ## 0.2.4
 
