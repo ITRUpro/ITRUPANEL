@@ -1,2 +1,0 @@
-info@shop.example.test:{CRAM-MD5}e4512ed9525656e33ecb24c4e991a3cc9ad7cb950874114cc516edd6adbf65f5:1001:1005::/var/www/alice/data/email/shop.example.test/info:::maildir:/var/www/alice/data/email/shop.example.test/info/.maildir  userdb_quota_rule=*:bytes=0M
-sales@shop.example.test:{CRAM-MD5}a6b514236a06bc126284c9c1fb2ea5614bbfa0f6c45043ad9999ca16093f64cf:1001:1005::/var/www/alice/data/email/shop.example.test/sales:::maildir:/var/www/alice/data/email/shop.example.test/sales/.maildir  userdb_quota_rule=*:bytes=0M

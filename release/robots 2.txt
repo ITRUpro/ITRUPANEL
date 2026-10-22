@@ -1,9 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /panel/
-Disallow: /admin/
-Disallow: /feedback/
-Disallow: /install-stats/
-Disallow: /forum/index.php?action=
-
-Sitemap: https://itrupanel.com/sitemap.xml

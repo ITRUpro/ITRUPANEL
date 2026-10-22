@@ -57,3 +57,12 @@ for (const lang of ['', 'en/']) {
   assert.equal(vm.runInContext('watched',h.c),'ftp-scan');
  });
 }
+
+for(const lang of ['', 'en/']) {
+ test('storage mark: every cloud kind is a cloud, only FTP stays FTP '+lang,()=>{
+  const h=harness(lang);
+  const is=src=>vm.runInContext(`backupInCloud({remote_source:${JSON.stringify(src)}})`,h.c);
+  for(const src of ['s3-1a2b','dav-1a2b','dbx-1a2b','gdr-1a2b']) assert.equal(is(src),true,src);
+  for(const src of ['','ftp-1a2b','sftp-x',undefined]) assert.equal(is(src),false,String(src));
+ });
+}

@@ -11,6 +11,7 @@ All notable changes to ITRUPANEL. Release archives and checksums: https://itrupa
 - verified end to end against a real FASTPANEL installation (sites, PHP, database with data, cron, FTP login and IMAP login with the old passwords, a moved message)
 - not moved from FASTPANEL: DNS (it lives at external providers), mail aliases and forwards, SSL certificates, Node.js applications
 - WebDAV (Yandex Disk, Mail.ru Cloud and others): **Check connection** now runs every step of a backup (sign-in, free space, folder, writing 64 B and 2 MB, reading, deleting), shows the server's answer for each step on failure and reports a lack of free space directly; folders are created only when missing
+- the backup table shows **Cloud** in the “Stored” column for every cloud (Yandex Disk, Mail.ru, Dropbox, Google Drive, S3) instead of “FTP”
 
 ## 0.2.3
 

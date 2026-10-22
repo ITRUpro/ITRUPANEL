@@ -1000,6 +1000,8 @@ async function backupSettingsForm() {
   }
 }
 const backupTabs = [['files', "Website files"], ['db', "Databases"], ['panel', "Panel settings"]];
+// Копия лежит в облаке (S3, WebDAV, Dropbox, Google Drive), если идентификатор хранилища начинается с s3-, dav-, dbx- или gdr-; иначе это FTP.
+const backupInCloud = (r) => /^(s3|dav|dbx|gdr)-/.test(r.remote_source || '');
 const backupTabOf = (r) => r.kind === 'database' ? 'db' : r.kind === 'panel' ? 'panel' : 'files';
 page('backups', {
   title: "Backups",
@@ -1028,9 +1030,9 @@ page('backups', {
     const auto = (r) => r.auto ? " <span class=\"tag\">auto</span>" : '';
     const common = [
       { t: "Size", r: (r) => r.running ? '' : (r.size ? fmtBytes(r.size) : '—'), cls: 'nowrap' },
-      { t: "Stored", r: (r) => r.running ? '' : [r.local !== false ? "<span class=\"tag\">server</span>" : '', r.remote ? '<span class="tag acc">' + ((r.remote_source || '').startsWith('s3-') ? "Cloud" : 'FTP') + '</span>' : ''].join(' '), cls: 'hide-sm' },
+      { t: "Stored", r: (r) => r.running ? '' : [r.local !== false ? "<span class=\"tag\">server</span>" : '', r.remote ? '<span class="tag acc">' + (backupInCloud(r) ? "Cloud" : 'FTP') + '</span>' : ''].join(' '), cls: 'hide-sm' },
       { t: "Date", r: (r) => r.running ? '' : fmtDate(r.created), cls: 'nowrap' },
-      { t: "Restoration", r: (r) => r.running ? '' : (r.restore_issue ? '<span class="muted">'+h(r.restore_issue)+'</span>' : (r.imported ? "Imported from FTP" : '—')) },
+      { t: "Restoration", r: (r) => r.running ? '' : (r.restore_issue ? '<span class="muted">'+h(r.restore_issue)+'</span>' : (r.imported ? (backupInCloud(r) ? "Imported from the cloud" : "Imported from FTP") : '—')) },
     ];
     const columns = {
       files: [
@@ -1070,7 +1072,7 @@ page('backups', {
         g.rows.push(r);
         g.size += r.size || 0;
         if (r.local !== false) g.local = true;
-        if (r.remote) { if ((r.remote_source || '').startsWith('s3-')) g.cloud = true; else g.ftp = true; }
+        if (r.remote) { if (backupInCloud(r)) g.cloud = true; else g.ftp = true; }
       }
       for (const g of m.values()) g.rows.sort((a, b) => Date.parse(b.created) - Date.parse(a.created));
       return [...m.values()].sort((a, b) => a.key.localeCompare(b.key));
