@@ -1172,5 +1172,6 @@
   "WebDAV: сбой на шаге «%s»: %s. Ход проверки: %s": "WebDAV: failed at step “%s”: %s. Check log: %s",
   "WebDAV (проверка папки): %s": "WebDAV (folder check): %s",
   "в хранилище почти нет свободного места: свободно %s, занято %s. Освободите место или увеличьте тариф": "the storage has almost no free space: %s free, %s used. Free some space or upgrade the plan",
-  "WebDAV (загрузка): в хранилище не хватает места: свободно %s, нужно %s": "WebDAV (upload): the storage does not have enough space: %s free, %s needed"
+  "WebDAV (загрузка): в хранилище не хватает места: свободно %s, нужно %s": "WebDAV (upload): the storage does not have enough space: %s free, %s needed",
+  "Дождитесь завершения текущих операций: загрузки файлов или закройте Shell-клиент": "Wait for the current operations (file uploads) to finish or close the Shell client"
 }

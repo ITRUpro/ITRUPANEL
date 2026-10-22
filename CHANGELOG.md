@@ -2,6 +2,11 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.8
+
+- a file upload whose connection has stalled (the browser went away, the network dropped) is aborted after two minutes without data; before, it could hold the panel for hours and the **Update** button answered "Wait for the current operations to finish"
+- clearer message when an update cannot start because a file upload or the Shell client is still open
+
 ## 0.2.7
 
 - the installer checks the server before installing and shows the result: operating system, architecture, root, systemd, memory, free disk space, access to itrupanel.com and the ports 80, 443 and 3333 (in Russian or English, by the server locale); warnings do not stop the installation

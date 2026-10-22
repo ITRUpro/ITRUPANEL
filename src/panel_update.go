@@ -342,7 +342,7 @@ func startPanelUpdateMode(version, sha string, auto bool) (*PanelUpdateRun, erro
 		return nil, errf("Сначала обновите панель до %s", r.MinimumVersion)
 	}
 	if !updateGate.TryLock() {
-		return nil, errf("Дождитесь завершения текущих операций или закройте Shell-клиент")
+		return nil, errf("Дождитесь завершения текущих операций: загрузки файлов или закройте Shell-клиент")
 	}
 	defer updateGate.Unlock()
 	if runningPanelUpdate(reconcilePanelUpdate()) {
@@ -659,7 +659,7 @@ func applyPanelUpdate(id string) (*PanelUpdateRun, error) {
 		return nil, errf("%s", reason)
 	}
 	if !updateGate.TryLock() {
-		return nil, errf("Дождитесь завершения текущих операций или закройте Shell-клиент")
+		return nil, errf("Дождитесь завершения текущих операций: загрузки файлов или закройте Shell-клиент")
 	}
 	defer updateGate.Unlock()
 	return signalPanelUpdateApply(id)
@@ -810,6 +810,33 @@ func withUpdateGuard(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "Выполняется обновление панели. Повторите после завершения.", http.StatusServiceUnavailable)
 			return
 		}
+		next(w, r)
+	}
+}
+
+// uploadIdleTimeout — сколько загрузка может молчать, пока панель ждёт следующую порцию данных. Если браузер пропал
+// или связь оборвалась, обработчик загрузки без этого ограничения висит часами и держит блокировку обновления:
+// «Обновить» тогда отвечает «Дождитесь завершения текущих операций».
+var uploadIdleTimeout = 2 * time.Minute
+
+type idleBody struct {
+	rc *http.ResponseController
+	r  io.ReadCloser
+	d  time.Duration
+}
+
+func (b idleBody) Read(p []byte) (int, error) {
+	_ = b.rc.SetReadDeadline(time.Now().Add(b.d))
+	return b.r.Read(p)
+}
+func (b idleBody) Close() error { return b.r.Close() }
+
+// withIdleBody прерывает приём тела запроса, если от клиента долго нет данных.
+func withIdleBody(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		rc := http.NewResponseController(w)
+		r.Body = idleBody{rc: rc, r: r.Body, d: uploadIdleTimeout}
+		defer rc.SetReadDeadline(time.Time{})
 		next(w, r)
 	}
 }
