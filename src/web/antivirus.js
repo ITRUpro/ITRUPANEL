@@ -63,7 +63,7 @@ async function avFindings(site, unicode) {
   const body = $('[data-body]', m.el);
   if (!scan) { body.innerHTML = '<p class="muted">Сайт ещё не проверялся.</p>'; return; }
   const draw = () => {
-    body.innerHTML = `<p class="muted">Проверено ${fmtDate(scan.finished)} · файлов: ${scan.files} · ${scan.engines.includes('clamav') ? 'встроенная проверка и ClamAV' : 'встроенная проверка'}${scan.more ? ` · показаны первые 500, ещё ${scan.more}` : ''}</p>${scan.error ? `<p class="err">${h(scan.error)}</p>` : ''}
+    body.innerHTML = `<p class="muted">Проверено ${fmtDate(scan.finished)} · файлов: ${scan.files} · ${['встроенная проверка', scan.engines.includes('clamav') && 'ClamAV', scan.engines.includes('aibolit') && 'AI-Bolit'].filter(Boolean).join(' + ')}${scan.more ? ` · показаны первые 500, ещё ${scan.more}` : ''}</p>${scan.error ? `<p class="err">${h(scan.error)}</p>` : ''}
       ${scan.findings.length ? `<div class="toolbar" style="margin:6px 0 12px"><button class="btn primary" data-cure>${icon('shield')}Вылечить сайт</button><span class="muted">План лечения покажется перед изменениями</span></div>` : ''}<div data-table></div>`;
     table($('[data-table]', body), {
       rows: scan.findings,
@@ -94,7 +94,7 @@ page('antivirus', {
     let high = 0, medium = 0, scanned = 0;
     d.sites.forEach((s) => { if (s.scan) { scanned++; high += s.scan.high; medium += s.scan.medium + (s.scan.more || 0); } });
     const hero = document.createElement('section'); hero.className = 'sec-hero';
-    hero.innerHTML = `<div class="sec-emblem">${icon('bug')}</div><div><div class="sec-eyebrow">ITRUPANEL · ${d.clamav.usable && d.clamav.enabled ? 'ВСТРОЕННАЯ ПРОВЕРКА + CLAMAV' : 'ВСТРОЕННАЯ ПРОВЕРКА'}</div><h2>${high ? 'Найдены опасные файлы.' : 'Сайты под присмотром.'}<br>${h(avScheduleText(d))}.</h2><p>Ищутся веб-шеллы, выполнение закодированного кода, вставки в PHP, JS и .htaccess, PHP-код в картинках.<br>«Вылечить» возвращает чистые версии файлов из резервных копий или вырезает вставку.</p></div>`;
+    hero.innerHTML = `<div class="sec-emblem">${icon('bug')}</div><div><div class="sec-eyebrow">ITRUPANEL · ${['ВСТРОЕННАЯ ПРОВЕРКА', d.clamav.usable && d.clamav.enabled && 'CLAMAV', d.aibolit.usable && d.aibolit.enabled && 'AI-BOLIT'].filter(Boolean).join(' + ')}</div><h2>${high ? 'Найдены опасные файлы.' : 'Сайты под присмотром.'}<br>${h(avScheduleText(d))}.</h2><p>Ищутся веб-шеллы, выполнение закодированного кода, вставки в PHP, JS и .htaccess, PHP-код в картинках.<br>«Вылечить» возвращает чистые версии файлов из резервных копий или вырезает вставку.</p></div>`;
     view.append(hero);
     const cards = document.createElement('div'); cards.className = 'sec-metrics'; cards.style.marginTop = '16px';
     cards.innerHTML = [['Проверено сайтов', scanned + ' из ' + d.sites.length, 'globe', d.last_run && new Date(d.last_run).getFullYear() > 2000 ? 'Последняя полная: ' + fmtDate(d.last_run) : 'Полной проверки ещё не было'], ['Опасные', high, 'bug', 'Веб-шеллы и выполнение кода'], ['Подозрительные', medium, 'search', 'Требуют внимания'], ['В карантине', d.quarantine.length, 'lock', 'Файлы можно вернуть']].map(([t, v, i, s]) => `<div class="sec-metric"><div class="sec-metric-top">${h(t)}${icon(i)}</div><strong>${h(v)}</strong><span>${h(s)}</span></div>`).join('');
@@ -150,6 +150,20 @@ page('antivirus', {
     const install = $('[data-install]', clam), update = $('[data-update]', clam);
     if (install) install.onclick = async () => { if (!(await confirmBox('Установить ClamAV?', 'Будут установлены пакеты clamav и загружены базы сигнатур (около 120 МБ). Для проверки ClamAV нужно от 2 ГБ памяти.', { ok: 'Установить', danger: false }))) return; try { const r = await api('av.install'); watchJob(r.job); } catch (e) { fail(e); } };
     if (update) update.onclick = async () => { try { const r = await api('av.update'); watchJob(r.job); } catch (e) { fail(e); } };
+
+    const ab = panel(view, 'AI-Bolit');
+    const a = d.aibolit;
+    ab.innerHTML = `<p>${a.installed ? `Подключён${a.source ? ' (скачан с ' + h(a.source) + ')' : ''}.${a.enabled ? '' : ' Сейчас выключен.'}${a.installed && !a.php ? ' <span class="err">Для работы нужен PHP в командной строке.</span>' : ''}` : 'Не подключён. Встроенная проверка и ClamAV работают и без него.'}</p>
+      <div class="toolbar">${a.installed ? `<label class="check"><input type="checkbox" data-bolit-on ${a.enabled ? 'checked' : ''}><span>Проверять и AI-Bolit</span></label><button class="btn" data-bolit-remove>${icon('trash')}Отключить</button>` : ''}<button class="btn ${a.installed ? '' : 'primary'}" data-bolit-install>${icon('download')}${a.installed ? 'Обновить из адреса' : 'Подключить AI-Bolit'}</button></div>
+      <p class="hint">AI-Bolit — сканер сайтов от Revisium. Панель его не поставляет: у сканера и его базы нет лицензии на распространение. Скачайте ai-bolit.php на странице разработчика и укажите адрес файла. Проверка идёт после встроенной и ClamAV, по очереди, с низким приоритетом и без опасных функций PHP.</p>`;
+    const bi = $('[data-bolit-install]', ab), bo = $('[data-bolit-on]', ab), br = $('[data-bolit-remove]', ab);
+    bi.onclick = () => openForm({
+      title: 'Подключить AI-Bolit', ok: 'Подключить',
+      fields: [{ name: 'url', label: 'Адрес файла ai-bolit.php', placeholder: 'https://…/ai-bolit.php', hint: 'Только https. Файл проверяется: это должен быть сканер AI-Bolit с корректным PHP-кодом.' }],
+      submit: async (v) => { const r = await api('av.aibolit.install', { url: v.url }); watchJob(r.job); },
+    });
+    if (bo) bo.onchange = async (e) => { try { await api('av.aibolit.settings', { enabled: e.target.checked, path: a.path || '' }); toast('Сохранено', 'ok'); } catch (er) { fail(er); e.target.checked = !e.target.checked; } };
+    if (br) br.onclick = async () => { if (!(await confirmBox('Отключить AI-Bolit?', 'Файл сканера будет удалён с сервера. Подключить его можно снова по адресу.'))) return; try { await api('av.aibolit.remove'); route(); } catch (e) { fail(e); } };
 
     const q = panel(view, 'Карантин');
     table(q, {

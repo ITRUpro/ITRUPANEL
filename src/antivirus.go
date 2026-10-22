@@ -37,22 +37,26 @@ const (
 )
 
 type AntivirusState struct {
-	Schedule      string             `json:"schedule"` // daily | weekly | off ("" — weekly)
-	Hour          int                `json:"hour"`
-	Weekday       int                `json:"weekday"` // 0 — воскресенье
-	NoClam        bool               `json:"no_clam,omitempty"`
-	Mirror        string             `json:"mirror,omitempty"`
-	LastRun       time.Time          `json:"last_run"`
-	DBChecked     time.Time          `json:"db_checked,omitempty"` // последняя автоматическая попытка обновить базы
-	DBUpdated     time.Time          `json:"db_updated,omitempty"`
-	DBError       string             `json:"db_error,omitempty"`
-	Scans         map[string]*AVScan `json:"scans,omitempty"`
-	Quarantine    []*AVQuarantine    `json:"quarantine,omitempty"`
-	Ignored       map[string]string  `json:"ignored,omitempty"`       // «сайт:путь» → sha256 пропущенного файла
-	RulesChecked  time.Time          `json:"rules_checked,omitempty"` // последняя проверка набора правил
-	RulesUpdated  time.Time          `json:"rules_updated,omitempty"`
-	RulesError    string             `json:"rules_error,omitempty"`
-	NoRulesUpdate bool               `json:"no_rules_update,omitempty"` // автоматическое обновление правил выключено
+	Schedule         string             `json:"schedule"` // daily | weekly | off ("" — weekly)
+	Hour             int                `json:"hour"`
+	Weekday          int                `json:"weekday"` // 0 — воскресенье
+	NoClam           bool               `json:"no_clam,omitempty"`
+	NoAIBolit        bool               `json:"no_aibolit,omitempty"`
+	AIBolitPath      string             `json:"aibolit_path,omitempty"`   // свой ai-bolit.php вместо установленного панелью
+	AIBolitSource    string             `json:"aibolit_source,omitempty"` // сайт, откуда скачан
+	AIBolitInstalled time.Time          `json:"aibolit_installed,omitempty"`
+	Mirror           string             `json:"mirror,omitempty"`
+	LastRun          time.Time          `json:"last_run"`
+	DBChecked        time.Time          `json:"db_checked,omitempty"` // последняя автоматическая попытка обновить базы
+	DBUpdated        time.Time          `json:"db_updated,omitempty"`
+	DBError          string             `json:"db_error,omitempty"`
+	Scans            map[string]*AVScan `json:"scans,omitempty"`
+	Quarantine       []*AVQuarantine    `json:"quarantine,omitempty"`
+	Ignored          map[string]string  `json:"ignored,omitempty"`       // «сайт:путь» → sha256 пропущенного файла
+	RulesChecked     time.Time          `json:"rules_checked,omitempty"` // последняя проверка набора правил
+	RulesUpdated     time.Time          `json:"rules_updated,omitempty"`
+	RulesError       string             `json:"rules_error,omitempty"`
+	NoRulesUpdate    bool               `json:"no_rules_update,omitempty"` // автоматическое обновление правил выключено
 }
 
 type AVScan struct {
@@ -69,7 +73,7 @@ type AVScan struct {
 type AVFinding struct {
 	Path     string `json:"path"` // относительно корня сайта
 	Threat   string `json:"threat"`
-	Engine   string `json:"engine"`   // builtin | clamav
+	Engine   string `json:"engine"`   // builtin | clamav | aibolit
 	Severity string `json:"severity"` // high | medium
 	Line     int    `json:"line,omitempty"`
 	Snippet  string `json:"snippet,omitempty"`
@@ -405,6 +409,7 @@ func runAVScanSites(j *Job, domains []string, auto bool) (map[string]any, error)
 		}
 	}
 	useClam := !store.Antivirus.NoClam
+	useBolit := !store.Antivirus.NoAIBolit
 	mu.Unlock()
 	if len(sites) == 0 {
 		return nil, errf("Сайт не найден")
@@ -420,6 +425,20 @@ func runAVScanSites(j *Job, domains []string, auto bool) (map[string]any, error)
 		clam, clamErr = avClamScan(j, roots)
 	} else if useClam && clamWhy != "" {
 		jobStage(j, clamWhy+": только встроенная проверка")
+	}
+	boltOK, _ := avAIBolitUsable()
+	boltOK = boltOK && useBolit && !cfg.Dry
+	bolt := map[string][]AVFinding{}
+	var boltErr error
+	if boltOK {
+		var roots []string
+		for _, s := range sites {
+			roots = append(roots, s.Root)
+		}
+		bolt, boltErr = avAIBolitScan(j, roots)
+		if jobStopped(j) {
+			return nil, errf("Задача остановлена")
+		}
 	}
 	total := 0
 	results := map[string]*AVScan{}
@@ -441,6 +460,13 @@ func runAVScanSites(j *Job, domains []string, auto bool) (map[string]any, error)
 			found = append(found, clam[s.Root]...)
 			if clamErr != nil {
 				scan.Error = clamErr.Error()
+			}
+		}
+		if boltOK {
+			scan.Engines = append(scan.Engines, "aibolit")
+			found = append(found, bolt[s.Root]...)
+			if boltErr != nil && scan.Error == "" {
+				scan.Error = boltErr.Error()
 			}
 		}
 		scan.Files = files
@@ -864,7 +890,7 @@ func avUpdateDB(j *Job) (any, error) {
 
 func avStatus() map[string]any {
 	clamOK, clamWhy := avClamUsable()
-	rulesInfo := avRulesInfo()
+	rulesInfo, boltInfo := avRulesInfo(), avAIBolitInfo()
 	mu.Lock()
 	defer mu.Unlock()
 	a := store.Antivirus
@@ -898,7 +924,7 @@ func avStatus() map[string]any {
 	if a.DBError != "" {
 		clam["db_error"] = a.DBError
 	}
-	return map[string]any{"rules": rulesInfo, "schedule": schedule, "hour": hour, "weekday": a.Weekday, "last_run": a.LastRun, "sites": sites, "quarantine": quarantine, "clamav": clam, "running": jobRunning("av:scan") || jobRunning("av:cure") || jobRunning("av:update") || jobRunning("av:rules"), "demo": cfg.Dry}
+	return map[string]any{"rules": rulesInfo, "schedule": schedule, "hour": hour, "weekday": a.Weekday, "last_run": a.LastRun, "sites": sites, "quarantine": quarantine, "clamav": clam, "aibolit": boltInfo, "running": jobRunning("av:scan") || jobRunning("av:cure") || jobRunning("av:update") || jobRunning("av:rules") || jobRunning("av:aibolit"), "demo": cfg.Dry}
 }
 
 func jobRunning(key string) bool {
@@ -915,6 +941,7 @@ func jobRunning(key string) bool {
 var reAVMirror = regexp.MustCompile(`^https?://[A-Za-z0-9.-]+(?::\d{1,5})?(?:/[A-Za-z0-9._~/-]*)?$`)
 
 func registerAntivirus() {
+	registerAntivirusAIBolit()
 	registerAntivirusRules()
 	api("av.status", func(q *Req) (any, error) { return avStatus(), nil })
 	api("av.findings", func(q *Req) (any, error) {

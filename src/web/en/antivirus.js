@@ -63,7 +63,7 @@ async function avFindings(site, unicode) {
   const body = $('[data-body]', m.el);
   if (!scan) { body.innerHTML = "<p class=\"muted\">The website has not been scanned yet.</p>"; return; }
   const draw = () => {
-    body.innerHTML = `<p class="muted">Scanned ${fmtDate(scan.finished)} · files: ${scan.files} · ${scan.engines.includes('clamav') ? "built-in scan and ClamAV" : "built-in scan"}${scan.more ? ` · first 500 shown, more: ${scan.more}` : ''}</p>${scan.error ? `<p class="err">${h(scan.error)}</p>` : ''}
+    body.innerHTML = `<p class="muted">Scanned ${fmtDate(scan.finished)} · files: ${scan.files} · ${["built-in scan", scan.engines.includes('clamav') && 'ClamAV', scan.engines.includes('aibolit') && 'AI-Bolit'].filter(Boolean).join(' + ')}${scan.more ? ` · first 500 shown, more: ${scan.more}` : ''}</p>${scan.error ? `<p class="err">${h(scan.error)}</p>` : ''}
       ${scan.findings.length ? `<div class="toolbar" style="margin:6px 0 12px"><button class="btn primary" data-cure>${icon('shield')}Clean up website</button><span class="muted">The cleanup plan is shown before any changes</span></div>` : ''}<div data-table></div>`;
     table($('[data-table]', body), {
       rows: scan.findings,
@@ -94,7 +94,7 @@ page('antivirus', {
     let high = 0, medium = 0, scanned = 0;
     d.sites.forEach((s) => { if (s.scan) { scanned++; high += s.scan.high; medium += s.scan.medium + (s.scan.more || 0); } });
     const hero = document.createElement('section'); hero.className = 'sec-hero';
-    hero.innerHTML = `<div class="sec-emblem">${icon('bug')}</div><div><div class="sec-eyebrow">ITRUPANEL · ${d.clamav.usable && d.clamav.enabled ? "BUILT-IN SCAN + CLAMAV" : "BUILT-IN SCAN"}</div><h2>${high ? "Dangerous files found." : "Websites are protected."}<br>${h(avScheduleText(d))}.</h2><p>Looks for web shells, execution of encoded code, injections in PHP, JS and .htaccess, and PHP code inside images.<br>Clean up restores clean file versions from backups or removes the injection.</p></div>`;
+    hero.innerHTML = `<div class="sec-emblem">${icon('bug')}</div><div><div class="sec-eyebrow">ITRUPANEL · ${["BUILT-IN SCAN", d.clamav.usable && d.clamav.enabled && 'CLAMAV', d.aibolit.usable && d.aibolit.enabled && 'AI-BOLIT'].filter(Boolean).join(' + ')}</div><h2>${high ? "Dangerous files found." : "Websites are protected."}<br>${h(avScheduleText(d))}.</h2><p>Looks for web shells, execution of encoded code, injections in PHP, JS and .htaccess, and PHP code inside images.<br>Clean up restores clean file versions from backups or removes the injection.</p></div>`;
     view.append(hero);
     const cards = document.createElement('div'); cards.className = 'sec-metrics'; cards.style.marginTop = '16px';
     cards.innerHTML = [["Websites scanned", scanned + " of " + d.sites.length, 'globe', d.last_run && new Date(d.last_run).getFullYear() > 2000 ? "Last full scan: " + fmtDate(d.last_run) : "No full scan yet"], ["Dangerous", high, 'bug', "Web shells and code execution"], ["Suspicious", medium, 'search', "Needs attention"], ["In quarantine", d.quarantine.length, 'lock', "Files can be restored"]].map(([t, v, i, s]) => `<div class="sec-metric"><div class="sec-metric-top">${h(t)}${icon(i)}</div><strong>${h(v)}</strong><span>${h(s)}</span></div>`).join('');
@@ -150,6 +150,20 @@ page('antivirus', {
     const install = $('[data-install]', clam), update = $('[data-update]', clam);
     if (install) install.onclick = async () => { if (!(await confirmBox("Install ClamAV?", "The clamav packages will be installed and signature databases downloaded (about 120 MB). ClamAV scanning needs at least 2 GB of memory.", { ok: "Install", danger: false }))) return; try { const r = await api('av.install'); watchJob(r.job); } catch (e) { fail(e); } };
     if (update) update.onclick = async () => { try { const r = await api('av.update'); watchJob(r.job); } catch (e) { fail(e); } };
+
+    const ab = panel(view, 'AI-Bolit');
+    const a = d.aibolit;
+    ab.innerHTML = `<p>${a.installed ? `Connected${a.source ? " (downloaded from " + h(a.source) + ')' : ''}.${a.enabled ? '' : " Currently turned off."}${a.installed && !a.php ? " <span class=\"err\">PHP on the command line is required.</span>" : ''}` : "Not connected. The built-in scan and ClamAV work without it."}</p>
+      <div class="toolbar">${a.installed ? `<label class="check"><input type="checkbox" data-bolit-on ${a.enabled ? 'checked' : ''}><span>Also scan with AI-Bolit</span></label><button class="btn" data-bolit-remove>${icon('trash')}Disable</button>` : ''}<button class="btn ${a.installed ? '' : 'primary'}" data-bolit-install>${icon('download')}${a.installed ? "Update from address" : "Connect AI-Bolit"}</button></div>
+      <p class="hint">AI-Bolit is a website scanner by Revisium. The panel does not ship it: the scanner and its database have no licence that allows redistribution. Download ai-bolit.php from the developer's page and enter the file address. The scan runs after the built-in one and ClamAV, one after another, at the lowest priority and without dangerous PHP functions.</p>`;
+    const bi = $('[data-bolit-install]', ab), bo = $('[data-bolit-on]', ab), br = $('[data-bolit-remove]', ab);
+    bi.onclick = () => openForm({
+      title: "Connect AI-Bolit", ok: "Connect",
+      fields: [{ name: 'url', label: "Address of the ai-bolit.php file", placeholder: 'https://…/ai-bolit.php', hint: "https only. The file is checked: it must be the AI-Bolit scanner with valid PHP code." }],
+      submit: async (v) => { const r = await api('av.aibolit.install', { url: v.url }); watchJob(r.job); },
+    });
+    if (bo) bo.onchange = async (e) => { try { await api('av.aibolit.settings', { enabled: e.target.checked, path: a.path || '' }); toast("Saved", 'ok'); } catch (er) { fail(er); e.target.checked = !e.target.checked; } };
+    if (br) br.onclick = async () => { if (!(await confirmBox("Disconnect AI-Bolit?", "The scanner file will be deleted from the server. You can connect it again by address."))) return; try { await api('av.aibolit.remove'); route(); } catch (e) { fail(e); } };
 
     const q = panel(view, "Quarantine");
     table(q, {

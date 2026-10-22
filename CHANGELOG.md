@@ -2,6 +2,10 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.9
+
+- **AI-Bolit as an optional third antivirus engine**, next to the built-in scan and ClamAV. The panel does not ship it (the scanner and its database have no licence that allows redistribution): in **Antivirus** press **Connect AI-Bolit** and enter the https address of the `ai-bolit.php` file from the developer's page. PHP on the command line is required. The engines run one after another — built-in, ClamAV, AI-Bolit — at the lowest priority and without dangerous PHP functions; every finding shows its engine
+
 ## 0.2.8
 
 - **antivirus rules that update themselves**: a separate pack of detection rules (obfuscated function names, `eval` of remote or request data, uploads to a request-controlled path, PHP hidden in fake GIF files, known web shells, JS `eval(atob(...))`, search-engine redirects in `.htaccess`) is signed with the ITRUPANEL release key and published in the repository (`antivirus/rules.json`). Once a day the panel downloads it from GitHub (itrupanel.com is the fallback), checks the signature and applies it without restarting; there is also an **Update rules** button and a switch for automatic updates. The panel accepts only signed and newer packs and rejects any rule that would fire on ordinary code
