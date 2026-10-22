@@ -2004,7 +2004,7 @@
   "Логины, пароли и ключи хранятся только в памяти панели на время переноса (до трёх часов), на диск и в журналы не записываются. На старом сервере ничего не изменяется.": "Logins, passwords and keys are kept only in the panel’s memory while the transfer runs (up to three hours) and are never written to disk or logs. Nothing is changed on the old server.",
   "Ключ SSH-сервера": "SSH server key",
   "Подключена из облака": "Imported from the cloud",
-  "Скачать архив 0.2.5": "Download version 0.2.5",
   "Готовим файл для скачивания…": "Preparing the file for download…",
-  "Не удалось подготовить файл": "Could not prepare the file"
+  "Не удалось подготовить файл": "Could not prepare the file",
+  "Скачать архив 0.2.6": "Download version 0.2.6"
 }

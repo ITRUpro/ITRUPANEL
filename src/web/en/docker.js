@@ -28,11 +28,20 @@ function dockerContainerForm(networks, image = '') {
   } });
 }
 
+// Терминал контейнера оформлен светлым, как остальной интерфейс (тёмным остаётся только Shell-клиент сервера).
+function lightTerminalTheme() {
+  const v = (n, d) => (getComputedStyle(document.documentElement).getPropertyValue(n) || '').trim() || d;
+  return {
+    background: v('--card', '#ffffff'), foreground: v('--text', '#1c2641'), cursor: v('--accent', '#4166f5'), cursorAccent: v('--card', '#ffffff'), selectionBackground: v('--accent-soft', '#e7ecfe'), selectionForeground: v('--text', '#1c2641'),
+    black: '#1c2641', red: '#c4262e', green: '#1a7f4b', yellow: '#8a5a00', blue: '#2849d6', magenta: '#8a2fb8', cyan: '#0f7a8a', white: '#6b7792',
+    brightBlack: '#4b5675', brightRed: '#d9383f', brightGreen: '#23a26a', brightYellow: '#a06a00', brightBlue: '#4166f5', brightMagenta: '#a444d6', brightCyan: '#1496a8', brightWhite: '#1c2641',
+  };
+}
 async function dockerTerminal(c) {
   if (!$('link[href="/vendor/xterm.css"]')) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/vendor/xterm.css'; document.head.append(l); }
   try { await loadScript('/vendor/xterm.js'); await loadScript('/vendor/addon-fit.js'); } catch (e) { fail(e); return; }
-  const m = modal(`<h3>Terminal: ${h(c.name)}</h3><div class="term-box" style="height:60vh"></div><div class="btns"><button class="btn primary" data-close>Close</button></div>`, { wide: true });
-  const term = new Terminal({ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: 14, cursorBlink: true, theme: { background: '#0f1424' } });
+  const m = modal(`<h3>Terminal: ${h(c.name)}</h3><div class="term-box light" style="height:60vh"></div><div class="btns"><button class="btn primary" data-close>Close</button></div>`, { wide: true });
+  const term = new Terminal({ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: 14, cursorBlink: true, theme: lightTerminalTheme() });
   const fit = new FitAddon.FitAddon();
   term.loadAddon(fit); term.open($('.term-box', m.el)); fit.fit();
   const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/docker-shell?id=' + encodeURIComponent(c.id));

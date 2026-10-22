@@ -269,6 +269,7 @@ pre.out.code { font: 12.5px/1.55 var(--mono); word-break: break-all; }
 /* Редактор файла занимает окно до кнопок «Сохранить/Отмена»: правило .field textarea иначе сжимает его до 120px. */
 .field textarea.editor { height: calc(100dvh - 234px); min-height: 240px; resize: none; padding: 14px; }
 .term-box { background: #0f1424; border-radius: 18px; padding: 14px; height: calc(100vh - 260px); min-height: 360px; }
+.term-box.light { background: var(--card); border: 1px solid var(--line); }
 .kv { display: grid; grid-template-columns: 220px 1fr; gap: 10px 20px; }
 .kv div:nth-child(odd) { color: var(--muted); }
 .notice { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); align-items: flex-start; }
