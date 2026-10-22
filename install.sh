@@ -54,6 +54,12 @@ BIN="$HERE/bin/itrupanel-linux-$ARCH"
 [ -f "$BIN" ] || die "не найден $BIN — распакуйте архив целиком"
 "$BIN" version >/dev/null || die "бинарник не запускается на этом сервере ($ARCH)"
 
+# Логотип и проверка сервера (онлайн-установщик уже показал их и передал ITRUPANEL_BANNER=1).
+. "$HERE/install-banner.sh"
+if [ -z "${ITRUPANEL_BANNER:-}" ]; then
+  itru_banner
+  itru_preflight "${PRETTY_NAME:-$ID}" "$ARCH" install
+fi
 say "ITRUPANEL: ${PRETTY_NAME}, $ARCH"
 
 . "$HERE/installation-stats.sh"

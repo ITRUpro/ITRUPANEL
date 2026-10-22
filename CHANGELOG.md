@@ -2,6 +2,10 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.7
+
+Minor bug fixes.
+
 ## 0.2.6
 
 Minor bug fixes.

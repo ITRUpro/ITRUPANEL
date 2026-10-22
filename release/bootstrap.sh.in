@@ -3,10 +3,12 @@
 # ITRUPANEL online installer. Publish this file as /panel/install-itrupanel.sh at itrupanel.com.
 set -euo pipefail
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${PATH:+:$PATH}"
-RELEASE=0.2.6
+RELEASE=0.2.7
 ARCHIVE_SHA256=RELEASE_SHA256_PLACEHOLDER
 BASE_URL=https://itrupanel.com/panel
 fail() { echo "Ошибка: $*" >&2; exit 1; }
+
+#ITRUPANEL_BANNER_PLACEHOLDER
 
 # A shell opened by the panel belongs to itrupanel.service. Stopping that unit
 # kills the shell and its children, so hand the work to a separate systemd unit.
@@ -88,6 +90,9 @@ main() {
     # PHP setup may fail before state.json is first saved. Keep existing state.
     echo 'Найдена незавершённая установка. Повторяю настройку сервера.'
   fi
+  # Логотип и проверка сервера; install.sh из архива не повторяет их (ITRUPANEL_BANNER=1).
+  itru_banner
+  itru_preflight "${PRETTY_NAME:-unknown}" "$(uname -m)" "$mode"
   # /tmp may be a small tmpfs. Keep download and extraction on /var/tmp.
   WORK_DIR=$(mktemp -d /var/tmp/itrupanel-download.XXXXXXXX) || fail 'не удалось создать рабочую папку в /var/tmp'
   trap 'rm -rf -- "$WORK_DIR"' EXIT
