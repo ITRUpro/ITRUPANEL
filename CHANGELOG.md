@@ -2,14 +2,6 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
-## 0.2.5
-
-**Interface fixes for backups.**
-
-- the **Stored** column of the backup table says **Cloud** for every cloud kind (Yandex Disk, Mail.ru Cloud, Dropbox, Google Drive, S3) instead of "FTP"; backups attached from a cloud are marked "Imported from the cloud"
-- downloading a database or selected files from a backup starts at once, without a task window
-- task output and other service texts are plain text on a light background instead of a dark box
-
 ## 0.2.4
 
 **Import from FASTPANEL and a step-by-step WebDAV connection check.**
