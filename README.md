@@ -79,11 +79,12 @@ Every section is described in the [documentation](https://itrupanel.com/en/docs.
 The **Antivirus** section scans websites for web shells and malicious code and can clean infected files.
 
 - **Built-in scan**, available right away without installing anything: web shells, execution of encoded code, malicious injections in PHP, JS and `.htaccess`, PHP code hidden in images and PHP files in upload folders. Commented-out code is not treated as a threat, long encoded strings are decoded to show what is inside, and the rules are tuned not to fire on ordinary WordPress, Joomla or Bitrix code
+- **Updatable rules**: a pack of extra detection rules, signed with the release key, is downloaded once a day from this repository (`antivirus/rules.json`) and applied without restarting the panel; only signed, newer packs are accepted, and the **Update rules** button runs it on demand
 - **ClamAV** (optional): a signature database scan; the databases (about 120 MB) are updated once a day, with a switch to trusted mirrors where the official server is unavailable
 - **Cleanup from backups**: for every infected file the panel finds the last clean version in your backups and restores only that file; if there is none, the malicious injection is cut out and planted files go to quarantine. A plan is shown before any change
 - **Quarantine**: previous versions of changed files are kept and can be brought back
 - **Scan** all sites, one site or selected ones, manually or on a schedule (daily or weekly); the results show file, line, threat and severity, and notifications report findings
-- **Gentle on weak servers**: scans never run at the same time (one at a time, the engines one after another), ClamAV runs with the lowest priority and is skipped on servers with less than 2 GB of memory, and the default schedule is Sunday at 04:00
+- **Gentle on weak servers**: scans never run at the same time (one at a time: scans, cleanup and database and rule updates wait for each other), ClamAV runs with the lowest priority and is skipped on servers with less than 2 GB of memory, and the default schedule is Sunday at 04:00
 
 Heuristics can produce false positives, so look at a finding before deleting a suspicious file.
 

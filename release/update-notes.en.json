@@ -1,3 +1,5 @@
 [
+  "Antivirus: signed detection rules updated from GitHub separately from the panel (once a day or with the Update rules button).",
+  "Antivirus: scans, cleanup, ClamAV database updates and rule updates now run one after another, not at the same time.",
   "Minor bug fixes."
 ]

@@ -164,7 +164,7 @@ func avStagePut(staging, rel string, data []byte, mode os.FileMode) error {
 }
 
 func avPlanCure(j *Job, domain string, paths []string) (map[string]any, error) {
-	avScanMu.Lock()
+	avQueue(j)
 	defer avScanMu.Unlock()
 	mu.Lock()
 	scan := store.Antivirus.Scans[domain]
@@ -339,7 +339,7 @@ func avWholeFileMalware(rel string, data []byte) bool {
 
 // avApplyCure выполняет выбранные пункты плана. Изменившиеся после плана файлы пропускаются.
 func avApplyCure(j *Job, planID string, paths []string) (map[string]any, error) {
-	avScanMu.Lock()
+	avQueue(j)
 	defer avScanMu.Unlock()
 	avPlansMu.Lock()
 	plan := avPlans[planID]

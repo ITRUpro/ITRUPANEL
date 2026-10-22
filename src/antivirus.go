@@ -37,18 +37,22 @@ const (
 )
 
 type AntivirusState struct {
-	Schedule   string             `json:"schedule"` // daily | weekly | off ("" — weekly)
-	Hour       int                `json:"hour"`
-	Weekday    int                `json:"weekday"` // 0 — воскресенье
-	NoClam     bool               `json:"no_clam,omitempty"`
-	Mirror     string             `json:"mirror,omitempty"`
-	LastRun    time.Time          `json:"last_run"`
-	DBChecked  time.Time          `json:"db_checked,omitempty"` // последняя автоматическая попытка обновить базы
-	DBUpdated  time.Time          `json:"db_updated,omitempty"`
-	DBError    string             `json:"db_error,omitempty"`
-	Scans      map[string]*AVScan `json:"scans,omitempty"`
-	Quarantine []*AVQuarantine    `json:"quarantine,omitempty"`
-	Ignored    map[string]string  `json:"ignored,omitempty"` // «сайт:путь» → sha256 пропущенного файла
+	Schedule      string             `json:"schedule"` // daily | weekly | off ("" — weekly)
+	Hour          int                `json:"hour"`
+	Weekday       int                `json:"weekday"` // 0 — воскресенье
+	NoClam        bool               `json:"no_clam,omitempty"`
+	Mirror        string             `json:"mirror,omitempty"`
+	LastRun       time.Time          `json:"last_run"`
+	DBChecked     time.Time          `json:"db_checked,omitempty"` // последняя автоматическая попытка обновить базы
+	DBUpdated     time.Time          `json:"db_updated,omitempty"`
+	DBError       string             `json:"db_error,omitempty"`
+	Scans         map[string]*AVScan `json:"scans,omitempty"`
+	Quarantine    []*AVQuarantine    `json:"quarantine,omitempty"`
+	Ignored       map[string]string  `json:"ignored,omitempty"`       // «сайт:путь» → sha256 пропущенного файла
+	RulesChecked  time.Time          `json:"rules_checked,omitempty"` // последняя проверка набора правил
+	RulesUpdated  time.Time          `json:"rules_updated,omitempty"`
+	RulesError    string             `json:"rules_error,omitempty"`
+	NoRulesUpdate bool               `json:"no_rules_update,omitempty"` // автоматическое обновление правил выключено
 }
 
 type AVScan struct {
@@ -141,6 +145,18 @@ var reAVImageOpen = regexp.MustCompile(`(?i)<\?(?:php\b|=)`)
 var reAVDrupalFiles = regexp.MustCompile(`/sites/[^/]+/files/`)
 var reAVClamLine = regexp.MustCompile(`^(.+): (.+) FOUND$`)
 var avScanMu sync.Mutex
+
+// avQueue ставит тяжёлую работу антивируса в очередь: проверка, лечение, обновление баз и правил
+// идут по одной, следующая начинается, когда предыдущая закончилась. Возвращает с занятым avScanMu.
+func avQueue(j *Job) {
+	if avScanMu.TryLock() {
+		return
+	}
+	if j != nil {
+		j.Write([]byte("Ждём, пока закончится другая работа антивируса, затем начнём…\n"))
+	}
+	avScanMu.Lock()
+}
 
 func avExt(name string) string {
 	low := strings.ToLower(name)
@@ -375,7 +391,7 @@ func runAVScan(j *Job, domain string, auto bool) (map[string]any, error) {
 
 // runAVScanSites проверяет выбранные сайты; "*" в списке — все сайты.
 func runAVScanSites(j *Job, domains []string, auto bool) (map[string]any, error) {
-	avScanMu.Lock()
+	avQueue(j)
 	defer avScanMu.Unlock()
 	want := map[string]bool{}
 	for _, d := range domains {
@@ -826,6 +842,8 @@ func avAutoUpdateDB(now time.Time) {
 
 // avUpdateDB обновляет базы и запоминает результат для раздела «Антивирус».
 func avUpdateDB(j *Job) (any, error) {
+	avQueue(j)
+	defer avScanMu.Unlock()
 	err := avFreshclam(j)
 	mu.Lock()
 	if err != nil {
@@ -846,6 +864,7 @@ func avUpdateDB(j *Job) (any, error) {
 
 func avStatus() map[string]any {
 	clamOK, clamWhy := avClamUsable()
+	rulesInfo := avRulesInfo()
 	mu.Lock()
 	defer mu.Unlock()
 	a := store.Antivirus
@@ -879,7 +898,7 @@ func avStatus() map[string]any {
 	if a.DBError != "" {
 		clam["db_error"] = a.DBError
 	}
-	return map[string]any{"schedule": schedule, "hour": hour, "weekday": a.Weekday, "last_run": a.LastRun, "sites": sites, "quarantine": quarantine, "clamav": clam, "running": jobRunning("av:scan") || jobRunning("av:cure"), "demo": cfg.Dry}
+	return map[string]any{"rules": rulesInfo, "schedule": schedule, "hour": hour, "weekday": a.Weekday, "last_run": a.LastRun, "sites": sites, "quarantine": quarantine, "clamav": clam, "running": jobRunning("av:scan") || jobRunning("av:cure") || jobRunning("av:update") || jobRunning("av:rules"), "demo": cfg.Dry}
 }
 
 func jobRunning(key string) bool {
@@ -896,6 +915,7 @@ func jobRunning(key string) bool {
 var reAVMirror = regexp.MustCompile(`^https?://[A-Za-z0-9.-]+(?::\d{1,5})?(?:/[A-Za-z0-9._~/-]*)?$`)
 
 func registerAntivirus() {
+	registerAntivirusRules()
 	api("av.status", func(q *Req) (any, error) { return avStatus(), nil })
 	api("av.findings", func(q *Req) (any, error) {
 		var in struct{ Site string }
@@ -1102,6 +1122,25 @@ func avRuleFindings(rel, ext string, data []byte) []AVFinding {
 			if !avCommented(data, loc[0], ext) {
 				out = append(out, avFindingAt(rel, data, loc[0], r.threat, r.severity))
 				break
+			}
+		}
+	}
+	if p := avPack.Load(); p != nil {
+		for _, r := range p.Rules {
+			if len(r.exts) > 0 && !avHasExt(r.exts, ext) {
+				continue
+			}
+			if !r.code {
+				if loc := r.re.FindIndex(data); loc != nil {
+					out = append(out, avFindingAt(rel, data, loc[0], r.threat, r.severity))
+				}
+				continue
+			}
+			for _, loc := range r.re.FindAllIndex(data, -1) {
+				if !avCommented(data, loc[0], ext) {
+					out = append(out, avFindingAt(rel, data, loc[0], r.threat, r.severity))
+					break
+				}
 			}
 		}
 	}

@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "version": "2026.10.22",
+  "released": "2026-10-22",
+  "rules": [
+    {"id": "pack-eval-concat-name", "title": "Имя опасной функции склеивается из частей ('ev'.'al')", "severity": "high", "exts": [".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".php8", ".pht", ".phar", ".inc"], "code": true,
+     "pattern": "(?i)\\$\\w+\\s*=\\s*['\"](?:ev|as|sy|pa|sh|ex|pr|po)['\"]\\s*\\.\\s*['\"](?:al|sert|stem|ssthru|ell_exec|ec|oc_open|pen)['\"]"},
+    {"id": "pack-eval-php-input", "title": "Выполнение кода из тела запроса (eval + php://input)", "severity": "high", "exts": [".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".php8", ".pht", ".phar", ".inc"], "code": true,
+     "pattern": "(?i)\\b(?:eval|assert)\\s*\\(\\s*(?:@\\s*)?(?:file_get_contents|fgets|fread|stream_get_contents)\\s*\\(\\s*['\"]php://(?:input|stdin)"},
+    {"id": "pack-eval-remote", "title": "Выполнение кода, загруженного с другого сайта", "severity": "high", "exts": [".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".php8", ".pht", ".phar", ".inc"], "code": true,
+     "pattern": "(?i)\\b(?:eval|assert)\\s*\\(\\s*(?:@\\s*)?(?:file_get_contents|curl_exec|fopen|file|gzinflate\\s*\\(\\s*file_get_contents)\\s*\\(\\s*['\"]?https?://"},
+    {"id": "pack-include-remote", "title": "Подключение PHP-файла с другого сайта (include/require по URL)", "severity": "medium", "exts": [".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".php8", ".pht", ".inc"], "code": true,
+     "pattern": "(?i)\\b(?:include|require)(?:_once)?\\s*\\(?\\s*['\"](?:https?|ftp|data)://"},
+    {"id": "pack-upload-to-request-path", "title": "Загрузка файла по пути из запроса (загрузчик веб-шелла)", "severity": "high", "exts": [".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".php8", ".pht", ".phar", ".inc"], "code": true,
+     "pattern": "move_uploaded_file\\s*\\(\\s*\\$_FILES\\s*\\[[^\\]]{1,40}\\]\\s*\\[\\s*['\"]tmp_name['\"]\\s*\\]\\s*,\\s*\\$_(?:GET|POST|REQUEST|COOKIE)\\s*\\["},
+    {"id": "pack-callback-request", "title": "Функция обратного вызова берётся из запроса", "severity": "high", "exts": [".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".php8", ".pht", ".phar", ".inc"], "code": true,
+     "pattern": "(?i)\\b(?:array_map|array_filter|array_walk|array_reduce|call_user_func(?:_array)?|preg_replace_callback|register_shutdown_function|register_tick_function)\\s*\\(\\s*(?:@\\s*)?\\$_(?:GET|POST|REQUEST|COOKIE)\\s*\\["},
+    {"id": "pack-callback-danger", "title": "Опасная функция передана как обратный вызов (array_map('assert', …))", "severity": "high", "exts": [".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".php8", ".pht", ".phar", ".inc"], "code": true,
+     "pattern": "(?i)\\b(?:array_map|array_filter|array_walk|call_user_func(?:_array)?)\\s*\\(\\s*['\"](?:assert|system|exec|passthru|shell_exec|popen|proc_open|eval)['\"]\\s*,"},
+    {"id": "pack-usort-request", "title": "Функция сравнения для сортировки берётся из запроса (приём бэкдоров)", "severity": "high", "exts": [".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".php8", ".pht", ".phar", ".inc"], "code": true,
+     "pattern": "(?i)\\b(?:usort|uasort|uksort|array_udiff|array_uintersect)\\s*\\([^;\\n]{0,160}?,\\s*\\$_(?:GET|POST|REQUEST|COOKIE)\\s*\\["},
+    {"id": "pack-fake-gif-php", "title": "PHP-файл маскируется под картинку (заголовок GIF в начале)", "severity": "high", "exts": [".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".php8", ".pht", ".phar", ".inc"],
+     "pattern": "\\AGIF8[79]a[^\\n]{0,100}<\\?(?:php|=)"},
+    {"id": "pack-known-shell-names", "title": "Известный веб-шелл (по названию)", "severity": "high", "exts": [".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".php8", ".pht", ".phar", ".inc"],
+     "pattern": "(?i)(?:p0wny\\s*shell|weevely|b4tm4n|Gecko\\s*Shell|Cyber\\s*Shell\\s*by|GRP\\s*WebShell|WSO\\s*2\\.\\d)"},
+    {"id": "pack-js-eval-atob", "title": "Скрытый код: eval(atob('…')) с длинной закодированной строкой", "severity": "high", "exts": [".js", ".html", ".htm", ".shtml", ".php", ".phtml"],
+     "pattern": "eval\\s*\\(\\s*(?:window\\.)?atob\\s*\\(\\s*['\"][A-Za-z0-9+/=]{80,}"},
+    {"id": "pack-htaccess-search-redirect", "title": "В .htaccess включено перенаправление посетителей из поисковиков на другой сайт", "severity": "medium", "exts": [".htaccess"], "code": true,
+     "pattern": "(?i)RewriteCond\\s+%\\{HTTP_(?:USER_AGENT|REFERER)\\}\\s+[^\\n]*(?:google|yahoo|bing|yandex|baidu|aol|msn)[^\\n]*\\r?\\n(?:[ \\t]*RewriteCond[^\\n]*\\r?\\n)*[ \\t]*RewriteRule\\s+\\S+\\s+https?://"}
+  ]
+}

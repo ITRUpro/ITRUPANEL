@@ -2006,5 +2006,18 @@
   "Подключена из облака": "Imported from the cloud",
   "Готовим файл для скачивания…": "Preparing the file for download…",
   "Не удалось подготовить файл": "Could not prepare the file",
-  "Скачать архив 0.2.8": "Download version 0.2.8"
+  "Скачать архив 0.2.8": "Download version 0.2.8",
+  "Правила антивируса": "Antivirus rules",
+  "Подписанный набор правил: версия": "Signed rule pack: version",
+  "от": "from",
+  ", правил:": ", rules:",
+  "Дополнительный набор правил ещё не загружен, работают встроенные правила.": "The additional rule pack has not been downloaded yet; built-in rules are in use.",
+  "Последняя проверка обновлений:": "Last update check:",
+  "Обновления ещё не проверялись.": "Updates have not been checked yet.",
+  "Встроенных правил:": "Built-in rules:",
+  "Источник:": "Source:",
+  "(резерв — itrupanel.com). Набор подписан ключом выпусков ITRUPANEL; панель принимает только подписанные и более новые наборы.": "(fallback: itrupanel.com). The pack is signed with the ITRUPANEL release key; the panel accepts only signed and newer packs.",
+  "Обновить правила": "Update rules",
+  "Обновлять правила автоматически раз в сутки": "Update rules automatically once a day",
+  "Правила обновляются отдельно от панели, без её перезапуска. Обновление баз, правил и проверки идут по очереди, а не одновременно, чтобы не нагружать слабый сервер.": "Rules are updated separately from the panel, without restarting it. Database updates, rule updates and scans run one after another, not at the same time, so a weak server is not overloaded."
 }

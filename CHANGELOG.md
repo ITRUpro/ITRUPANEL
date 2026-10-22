@@ -4,6 +4,8 @@ All notable changes to ITRUPANEL. Release archives and checksums: https://itrupa
 
 ## 0.2.8
 
+- **antivirus rules that update themselves**: a separate pack of detection rules (obfuscated function names, `eval` of remote or request data, uploads to a request-controlled path, PHP hidden in fake GIF files, known web shells, JS `eval(atob(...))`, search-engine redirects in `.htaccess`) is signed with the ITRUPANEL release key and published in the repository (`antivirus/rules.json`). Once a day the panel downloads it from GitHub (itrupanel.com is the fallback), checks the signature and applies it without restarting; there is also an **Update rules** button and a switch for automatic updates. The panel accepts only signed and newer packs and rejects any rule that would fire on ordinary code
+- scans, cleanup, ClamAV database updates and rule updates now run **one after another**, never at the same time: the next job waits until the previous one has finished
 - a file upload whose connection has stalled (the browser went away, the network dropped) is aborted after two minutes without data; before, it could hold the panel for hours and the **Update** button answered "Wait for the current operations to finish"
 - clearer message when an update cannot start because a file upload or the Shell client is still open
 

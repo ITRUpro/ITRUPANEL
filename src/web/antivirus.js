@@ -132,6 +132,15 @@ page('antivirus', {
     });
     $$('[data-site-pick]', sites).forEach((c) => (c.onchange = () => { if (c.checked) picked.add(c.dataset.sitePick); else picked.delete(c.dataset.sitePick); syncPicked(); }));
 
+    const rp = panel(view, 'Правила антивируса');
+    const ru = d.rules;
+    rp.innerHTML = `<p>${ru.version ? `Подписанный набор правил: версия ${h(ru.version)} от ${h(ru.released)}, правил: ${h(ru.pack)}.` : 'Дополнительный набор правил ещё не загружен, работают встроенные правила.'} Встроенных правил: ${h(ru.builtin)}.</p>
+      <p class="muted">${ru.checked ? `Последняя проверка обновлений: ${fmtDate(ru.checked)}.` : 'Обновления ещё не проверялись.'} Источник: ${h(ru.source)} (резерв — itrupanel.com). Набор подписан ключом выпусков ITRUPANEL; панель принимает только подписанные и более новые наборы.</p>${ru.error ? `<p class="err">Последнее обновление не удалось: ${h(ru.error)}</p>` : ''}
+      <div class="toolbar"><button class="btn" data-rules-update>${icon('refresh')}Обновить правила</button><label class="check"><input type="checkbox" data-rules-auto ${ru.auto ? 'checked' : ''}><span>Обновлять правила автоматически раз в сутки</span></label></div>
+      <p class="hint">Правила обновляются отдельно от панели, без её перезапуска. Обновление баз, правил и проверки идут по очереди, а не одновременно, чтобы не нагружать слабый сервер.</p>`;
+    $('[data-rules-update]', rp).onclick = async () => { try { const r = await api('av.rules.update'); watchJob(r.job); } catch (e) { fail(e); } };
+    $('[data-rules-auto]', rp).onchange = async (e) => { try { await api('av.rules.settings', { auto: e.target.checked }); toast('Сохранено', 'ok'); } catch (er) { fail(er); e.target.checked = !e.target.checked; } };
+
     const clam = panel(view, 'ClamAV');
     const c = d.clamav;
     clam.innerHTML = `<p>${c.installed ? (c.db_date ? `Установлен. Базы сигнатур от ${fmtDate(c.db_date)}.` : 'Установлен, базы ещё не загружены.') : 'Не установлен. Встроенная проверка работает и без него.'}${c.installed && !c.enabled ? ' Сейчас выключен в настройках.' : ''}${c.installed && c.db_date && !c.usable ? ` <span class="muted">${h(c.reason)}.</span>` : ''}</p>

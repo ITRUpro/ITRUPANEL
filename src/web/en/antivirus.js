@@ -132,6 +132,15 @@ page('antivirus', {
     });
     $$('[data-site-pick]', sites).forEach((c) => (c.onchange = () => { if (c.checked) picked.add(c.dataset.sitePick); else picked.delete(c.dataset.sitePick); syncPicked(); }));
 
+    const rp = panel(view, "Antivirus rules");
+    const ru = d.rules;
+    rp.innerHTML = `<p>${ru.version ? `Signed rule pack: version ${h(ru.version)} from ${h(ru.released)}, rules: ${h(ru.pack)}.` : "The additional rule pack has not been downloaded yet; built-in rules are in use."} Built-in rules: ${h(ru.builtin)}.</p>
+      <p class="muted">${ru.checked ? `Last update check: ${fmtDate(ru.checked)}.` : "Updates have not been checked yet."} Source: ${h(ru.source)} (fallback: itrupanel.com). The pack is signed with the ITRUPANEL release key; the panel accepts only signed and newer packs.</p>${ru.error ? `<p class="err">The last update failed: ${h(ru.error)}</p>` : ''}
+      <div class="toolbar"><button class="btn" data-rules-update>${icon('refresh')}Update rules</button><label class="check"><input type="checkbox" data-rules-auto ${ru.auto ? 'checked' : ''}><span>Update rules automatically once a day</span></label></div>
+      <p class="hint">Rules are updated separately from the panel, without restarting it. Database updates, rule updates and scans run one after another, not at the same time, so a weak server is not overloaded.</p>`;
+    $('[data-rules-update]', rp).onclick = async () => { try { const r = await api('av.rules.update'); watchJob(r.job); } catch (e) { fail(e); } };
+    $('[data-rules-auto]', rp).onchange = async (e) => { try { await api('av.rules.settings', { auto: e.target.checked }); toast("Saved", 'ok'); } catch (er) { fail(er); e.target.checked = !e.target.checked; } };
+
     const clam = panel(view, 'ClamAV');
     const c = d.clamav;
     clam.innerHTML = `<p>${c.installed ? (c.db_date ? `Installed. Signature databases from ${fmtDate(c.db_date)}.` : "Installed, databases not downloaded yet.") : "Not installed. The built-in scan works without it."}${c.installed && !c.enabled ? " Currently disabled in settings." : ''}${c.installed && c.db_date && !c.usable ? ` <span class="muted">${h(c.reason)}.</span>` : ''}</p>

