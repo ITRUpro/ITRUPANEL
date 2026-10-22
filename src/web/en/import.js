@@ -8,26 +8,44 @@ const impStatus = { ok: ['ok', "transferred"], skipped: ['warn', "skipped"], err
 page('import', {
   title: "Import data",
   async render(view) {
-    head(view, "Import data", { sub: "Move websites, databases, mail, DNS, FTP and cron jobs from another ITRUPANEL server" });
+    head(view, "Import data", { sub: "Moving websites, databases, mail, DNS, FTP and cron jobs from another ITRUPANEL, from FASTPANEL or from any server over SSH" });
     const host = document.createElement('div');
     view.append(host);
     let session = null;
 
     // ---------- шаг 1: подключение ----------
-    const stepConnect = () => {
+    const stepConnect = (source = 'itrupanel') => {
       host.replaceChildren();
       const p = panel(host, "1. Where to move from");
-      p.innerHTML = `<p class="hint">Enter the address and administrator credentials of the old ITRUPANEL. The panel provides websites, databases and cron itself, and files and databases are moved through it too. The old panel must be version 0.1.94 or newer.</p>
-        <div class="cols2">
+      const sources = [['itrupanel', 'ITRUPANEL'], ['fastpanel', 'FASTPANEL'], ['ssh', "Other server over SSH"]];
+      const hints = {
+        itrupanel: "Enter the address and administrator login of the old ITRUPANEL. The panel itself provides websites, databases, mail, DNS, FTP and cron, and files and databases are sent directly.",
+        fastpanel: "Connect over SSH as root (or as a user with passwordless sudo). The lists of websites, databases, FTP and mail are read from FASTPANEL itself; if it does not answer, the server is inspected through the nginx and MySQL settings. Websites, databases (with passwords), FTP users, mail with messages and cron jobs are moved.",
+        ssh: "Connect over SSH as root (or as a user with passwordless sudo). Websites are found through the nginx settings. Websites, databases and cron jobs are moved; mail, DNS and FTP only from ITRUPANEL and FASTPANEL.",
+      };
+      const sshFields = `<div class="cols2">
+          <div class="field"><label>Server address</label><input type="text" name="ssh_host" placeholder="203.0.113.10" spellcheck="false"></div>
+          <div class="field"><label>SSH port</label><input type="text" name="ssh_port" value="22" inputmode="numeric"></div>
+          <div class="field"><label>User</label><input type="text" name="ssh_user" value="root" spellcheck="false" autocomplete="off"></div>
+          <div class="field"><label>Password</label><input name="ssh_password" type="password" autocomplete="new-password"></div>
+        </div>
+        <div class="field"><label>or an SSH private key (without a passphrase, if you sign in by key)</label><textarea name="ssh_key" rows="3" spellcheck="false" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea></div>`;
+      const itruFields = `<div class="cols2">
           <div class="field"><label>Panel address</label><input type="text" name="panel_url" placeholder="https://old.example.com:3333" spellcheck="false"></div>
           <div class="field"><label>Administrator login</label><input type="text" name="panel_login" value="admin" spellcheck="false" autocomplete="off"></div>
           <div class="field"><label>Password</label><input name="panel_password" type="password" autocomplete="new-password"></div>
-        </div>
-        <p class="hint">Logins and passwords are kept only in the panel memory during the transfer (up to three hours) and are not written to disk or logs.</p>
+        </div>`;
+      p.innerHTML = `<div class="seg" data-src>${sources.map(([v, n]) => `<button type="button" data-v="${v}" class="${v === source ? 'on' : ''}">${n}</button>`).join('')}</div>
+        <p class="hint" style="margin-top:14px">${hints[source]}</p>
+        ${source === 'itrupanel' ? itruFields : sshFields}
+        <p class="hint">Logins, passwords and keys are kept only in the panel’s memory while the transfer runs (up to three hours) and are never written to disk or logs. Nothing is changed on the old server.</p>
         <div class="btns"><button class="btn primary" data-go>${icon('search')}Check the old server</button></div>`;
+      $$('[data-src] button', p).forEach((b) => (b.onclick = () => stepConnect(b.dataset.v)));
       $('[data-go]', p).onclick = async (e) => {
-        const v = Object.fromEntries($$('input', p).map((i) => [i.name, i.value]));
-        const body = { panel: { url: v.panel_url, login: v.panel_login, password: v.panel_password } };
+        const v = Object.fromEntries($$('input,textarea', p).map((i) => [i.name, i.value]));
+        const body = source === 'itrupanel'
+          ? { panel: { url: v.panel_url, login: v.panel_login, password: v.panel_password } }
+          : { ssh: { host: v.ssh_host, port: +v.ssh_port || 22, user: v.ssh_user, password: v.ssh_password, key: v.ssh_key } };
         e.target.disabled = true;
         try {
           const r = await api('import.analyze', body);
@@ -44,8 +62,9 @@ page('import', {
       const info = panel(host, "Old server");
       info.innerHTML = `<div class="kv"><div>Address</div><div><b>${h(inv.host || '—')}</b></div>
         <div>System</div><div>${h(inv.os || '—')}</div>
-        <div>Panel</div><div>${h(({ itrupanel: 'ITRUPANEL', ispmanager: 'ISPmanager', aapanel: 'aaPanel', hestia: 'Hestia' })[inv.panel] || inv.panel || "not detected")}</div>
+        <div>Panel</div><div>${h(({ itrupanel: 'ITRUPANEL', fastpanel: 'FASTPANEL', ispmanager: 'ISPmanager', aapanel: 'aaPanel', hestia: 'Hestia' })[inv.panel] || inv.panel || "not detected")}</div>
                 ${inv.panel_fingerprint ? `<div>Panel certificate</div><div class="mono">${h(inv.panel_fingerprint)}</div>` : ''}
+        ${inv.fingerprint ? `<div>SSH server key</div><div class="mono">${h(inv.fingerprint)}</div>` : ''}
         <div>PHP versions</div><div>${h((inv.php_versions || []).join(', ') || '—')}</div></div>
         ${(inv.warnings || []).map((w) => `<p class="hint">⚠ ${h(w)}</p>`).join('')}
         ${inv.can_transfer ? '' : "<p class=\"err\">Moving is unavailable: this panel does not provide files and databases. Update it to version 0.1.94.</p>"}

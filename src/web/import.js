@@ -8,26 +8,44 @@ const impStatus = { ok: ['ok', 'перенесено'], skipped: ['warn', 'пр�
 page('import', {
   title: 'Импорт данных',
   async render(view) {
-    head(view, 'Импорт данных', { sub: 'Перенос сайтов, баз, почты, DNS, FTP и заданий cron с другого сервера ITRUPANEL' });
+    head(view, 'Импорт данных', { sub: 'Перенос сайтов, баз, почты, DNS, FTP и заданий cron с другой ITRUPANEL, с FASTPANEL или с любого сервера по SSH' });
     const host = document.createElement('div');
     view.append(host);
     let session = null;
 
     // ---------- шаг 1: подключение ----------
-    const stepConnect = () => {
+    const stepConnect = (source = 'itrupanel') => {
       host.replaceChildren();
       const p = panel(host, '1. Откуда переносим');
-      p.innerHTML = `<p class="hint">Укажите адрес и данные администратора старой панели ITRUPANEL. Панель сама отдаст сайты, базы и cron, а файлы и базы будут переданы через неё же. На старой панели должна быть версия 0.1.94 или новее.</p>
-        <div class="cols2">
+      const sources = [['itrupanel', 'ITRUPANEL'], ['fastpanel', 'FASTPANEL'], ['ssh', 'Другой сервер по SSH']];
+      const hints = {
+        itrupanel: 'Укажите адрес и данные администратора старой панели ITRUPANEL. Панель сама отдаст сайты, базы, почту, DNS, FTP и cron, а файлы и базы будут переданы напрямую.',
+        fastpanel: 'Подключение по SSH под root (или под пользователем с sudo без пароля). Список сайтов, баз, FTP и почты читается из самой панели FASTPANEL, а если она не ответит, сервер просматривается по настройкам nginx и MySQL. Переносятся сайты, базы (с паролями), FTP-пользователи, почта с письмами и cron.',
+        ssh: 'Подключение по SSH под root (или под пользователем с sudo без пароля). Сайты определяются по настройкам nginx. Переносятся сайты, базы и cron; почта, DNS и FTP — только с ITRUPANEL и FASTPANEL.',
+      };
+      const sshFields = `<div class="cols2">
+          <div class="field"><label>Адрес сервера</label><input type="text" name="ssh_host" placeholder="203.0.113.10" spellcheck="false"></div>
+          <div class="field"><label>Порт SSH</label><input type="text" name="ssh_port" value="22" inputmode="numeric"></div>
+          <div class="field"><label>Пользователь</label><input type="text" name="ssh_user" value="root" spellcheck="false" autocomplete="off"></div>
+          <div class="field"><label>Пароль</label><input name="ssh_password" type="password" autocomplete="new-password"></div>
+        </div>
+        <div class="field"><label>или закрытый ключ SSH (без пароля, если вход по ключу)</label><textarea name="ssh_key" rows="3" spellcheck="false" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea></div>`;
+      const itruFields = `<div class="cols2">
           <div class="field"><label>Адрес панели</label><input type="text" name="panel_url" placeholder="https://old.example.com:3333" spellcheck="false"></div>
           <div class="field"><label>Логин администратора</label><input type="text" name="panel_login" value="admin" spellcheck="false" autocomplete="off"></div>
           <div class="field"><label>Пароль</label><input name="panel_password" type="password" autocomplete="new-password"></div>
-        </div>
-        <p class="hint">Логины и пароли хранятся только в памяти панели на время переноса (до трёх часов), на диск и в журналы не записываются.</p>
+        </div>`;
+      p.innerHTML = `<div class="seg" data-src>${sources.map(([v, n]) => `<button type="button" data-v="${v}" class="${v === source ? 'on' : ''}">${n}</button>`).join('')}</div>
+        <p class="hint" style="margin-top:14px">${hints[source]}</p>
+        ${source === 'itrupanel' ? itruFields : sshFields}
+        <p class="hint">Логины, пароли и ключи хранятся только в памяти панели на время переноса (до трёх часов), на диск и в журналы не записываются. На старом сервере ничего не изменяется.</p>
         <div class="btns"><button class="btn primary" data-go>${icon('search')}Проверить старый сервер</button></div>`;
+      $$('[data-src] button', p).forEach((b) => (b.onclick = () => stepConnect(b.dataset.v)));
       $('[data-go]', p).onclick = async (e) => {
-        const v = Object.fromEntries($$('input', p).map((i) => [i.name, i.value]));
-        const body = { panel: { url: v.panel_url, login: v.panel_login, password: v.panel_password } };
+        const v = Object.fromEntries($$('input,textarea', p).map((i) => [i.name, i.value]));
+        const body = source === 'itrupanel'
+          ? { panel: { url: v.panel_url, login: v.panel_login, password: v.panel_password } }
+          : { ssh: { host: v.ssh_host, port: +v.ssh_port || 22, user: v.ssh_user, password: v.ssh_password, key: v.ssh_key } };
         e.target.disabled = true;
         try {
           const r = await api('import.analyze', body);
@@ -44,8 +62,9 @@ page('import', {
       const info = panel(host, 'Старый сервер');
       info.innerHTML = `<div class="kv"><div>Адрес</div><div><b>${h(inv.host || '—')}</b></div>
         <div>Система</div><div>${h(inv.os || '—')}</div>
-        <div>Панель</div><div>${h(({ itrupanel: 'ITRUPANEL', ispmanager: 'ISPmanager', aapanel: 'aaPanel', hestia: 'Hestia' })[inv.panel] || inv.panel || 'не определена')}</div>
+        <div>Панель</div><div>${h(({ itrupanel: 'ITRUPANEL', fastpanel: 'FASTPANEL', ispmanager: 'ISPmanager', aapanel: 'aaPanel', hestia: 'Hestia' })[inv.panel] || inv.panel || 'не определена')}</div>
                 ${inv.panel_fingerprint ? `<div>Сертификат панели</div><div class="mono">${h(inv.panel_fingerprint)}</div>` : ''}
+        ${inv.fingerprint ? `<div>Ключ SSH-сервера</div><div class="mono">${h(inv.fingerprint)}</div>` : ''}
         <div>Версии PHP</div><div>${h((inv.php_versions || []).join(', ') || '—')}</div></div>
         ${(inv.warnings || []).map((w) => `<p class="hint">⚠ ${h(w)}</p>`).join('')}
         ${inv.can_transfer ? '' : '<p class="err">Перенос недоступен: эта панель не отдаёт файлы и базы. Обновите её до версии 0.1.94.</p>'}

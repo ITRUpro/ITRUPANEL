@@ -216,6 +216,14 @@ func impMailExtract(ctx context.Context, p *impPanel, address string) (int64, er
 }
 
 func impTransferMailDomain(ctx context.Context, j *Job, p *impPanel, d impExportMailDomain) ImpItemResult {
+	return impTransferMailDomainFrom(ctx, j, p.mail, d, func(ctx context.Context, address string) (int64, error) {
+		return impMailExtract(ctx, p, address)
+	})
+}
+
+// impTransferMailDomainFrom создаёт почтовый домен и ящики по описанию mail и копирует письма функцией extract.
+// Так одним кодом переносится почта и с другой ITRUPANEL, и с FASTPANEL.
+func impTransferMailDomainFrom(ctx context.Context, j *Job, mail impExportMail, d impExportMailDomain, extract func(ctx context.Context, address string) (int64, error)) ImpItemResult {
 	res := ImpItemResult{Name: d.Name, Status: "error"}
 	mu.Lock()
 	exists := mailDomainExists(store.Mail, d.Name)
@@ -236,7 +244,7 @@ func impTransferMailDomain(ctx context.Context, j *Job, p *impPanel, d impExport
 	}
 	_ = warning
 	var boxes []impExportMailBox
-	for _, b := range p.mail.Boxes {
+	for _, b := range mail.Boxes {
 		if strings.HasSuffix(b.Address, "@"+d.Name) {
 			boxes = append(boxes, b)
 		}
@@ -264,12 +272,12 @@ func impTransferMailDomain(ctx context.Context, j *Job, p *impPanel, d impExport
 			}
 			m.Boxes = append(m.Boxes, MailBox{Address: addr, Name: b.Name, Hash: b.Hash, Enabled: b.Enabled, Created: time.Now(), QuotaMB: b.QuotaMB})
 		}
-		for _, a := range p.mail.Aliases {
+		for _, a := range mail.Aliases {
 			if strings.HasSuffix(a.Address, "@"+d.Name) && !mailAddressUsed(*m, a.Address) {
 				m.Aliases = append(m.Aliases, a)
 			}
 		}
-		for _, f := range p.mail.Forwards {
+		for _, f := range mail.Forwards {
 			if strings.HasSuffix(f.Address, "@"+d.Name) && !mailAddressUsed(*m, f.Address) {
 				m.Forwards = append(m.Forwards, f)
 			}
@@ -287,7 +295,7 @@ func impTransferMailDomain(ctx context.Context, j *Job, p *impPanel, d impExport
 			break
 		}
 		jobStage(j, "Перенос писем "+b.Address)
-		n, e := impMailExtract(ctx, p, b.Address)
+		n, e := extract(ctx, b.Address)
 		total += n
 		if e != nil {
 			failed++

@@ -607,8 +607,10 @@ func impRunWith(ctx context.Context, j *Job, r impRunner, sess *impSession, sel 
 	if extras > 0 {
 		if p, isPanel := r.(*impPanel); isPanel {
 			impTransferExtras(ctx, j, p, sess, sel, owners, res)
+		} else if inv.Panel == "fastpanel" {
+			impFastpanelExtras(ctx, j, r, sess, sel, owners, res)
 		} else {
-			res.Warnings = append(res.Warnings, "Почта, DNS и FTP переносятся только с другой ITRUPANEL")
+			res.Warnings = append(res.Warnings, "Почта, DNS и FTP переносятся только с другой ITRUPANEL или с FASTPANEL")
 		}
 	}
 	ok := 0

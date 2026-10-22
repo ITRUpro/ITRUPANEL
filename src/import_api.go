@@ -89,6 +89,10 @@ func impAnalyze(ctx context.Context, j *Job, in impAnalyzeIn) (*impSession, erro
 			return nil, err
 		}
 		inv.Fingerprint = r.Fingerprint()
+		if inv.Panel == "fastpanel" {
+			jobStage(j, "Чтение данных FASTPANEL")
+			impFastpanelEnrich(ctx, r, inv)
+		}
 	} else {
 		inv.Host = in.SSH.Host
 	}

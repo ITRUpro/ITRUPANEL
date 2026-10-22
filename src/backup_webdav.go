@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/xml"
 	"fmt"
@@ -174,7 +175,23 @@ func davFail(res *http.Response, action string) error {
 	return err
 }
 
-// mkdirs создаёт папку и все родительские (MKCOL); существующие папки не считаются ошибкой.
+// davExists проверяет, есть ли папка: PROPFIND надёжнее, чем MKCOL на существующую папку (серверы отвечают на неё по-разному).
+func (d *davStore) davExists(ctx context.Context, p string) (bool, error) {
+	body := `<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/></d:prop></d:propfind>`
+	res, err := d.do(ctx, "PROPFIND", p, strings.NewReader(body), int64(len(body)), map[string]string{"Depth": "0", "Content-Type": "application/xml; charset=utf-8"})
+	if err != nil {
+		return false, err
+	}
+	if res.StatusCode == 207 || res.StatusCode == 200 || res.StatusCode == 404 {
+		io.Copy(io.Discard, io.LimitReader(res.Body, 1<<20))
+		res.Body.Close()
+		return res.StatusCode != 404, nil
+	}
+	return false, davFail(res, "проверка папки")
+}
+
+// mkdirs создаёт папку и все родительские. MKCOL отправляется только для тех папок, которых нет;
+// если сервер ответил на MKCOL ошибкой, но папка появилась (создана параллельно), это не ошибка.
 func (d *davStore) mkdirs(ctx context.Context) error {
 	if d.c.Dir == "" {
 		return nil
@@ -182,6 +199,9 @@ func (d *davStore) mkdirs(ctx context.Context) error {
 	cur := ""
 	for _, seg := range strings.Split(d.c.Dir, "/") {
 		cur += "/" + seg
+		if ok, err := d.davExists(ctx, cur+"/"); err == nil && ok {
+			continue
+		}
 		res, err := d.do(ctx, "MKCOL", cur+"/", nil, 0, nil)
 		if err != nil {
 			return err
@@ -192,17 +212,74 @@ func (d *davStore) mkdirs(ctx context.Context) error {
 			res.Body.Close()
 			continue
 		}
-		return davFail(res, "создание папки")
+		fail := davFail(res, "создание папки")
+		if ok, err := d.davExists(ctx, cur+"/"); err == nil && ok {
+			continue
+		}
+		return fail
 	}
 	return nil
 }
 
+// Test проверяет все шаги, которые понадобятся копии: вход, папка, запись небольшого и крупного файла, чтение, удаление.
+// При сбое в сообщении перечислены ответы сервера по шагам: по ним видно, на чём именно остановилось.
 func (d *davStore) Test(ctx context.Context) error {
-	if err := d.mkdirs(ctx); err != nil {
+	var log []string
+	step := func(name string, err error) error {
+		if err != nil {
+			log = append(log, name+": "+firstLine(err.Error()))
+			return errf("WebDAV: сбой на шаге «%s»: %s. Ход проверки: %s", name, firstLine(err.Error()), strings.Join(log, "; "))
+		}
+		log = append(log, name+": ok")
+		return nil
+	}
+	if err := step("вход", func() error { _, e := d.davExists(ctx, "/"); return e }()); err != nil {
 		return err
 	}
-	_, err := d.propfind(ctx, d.folderPath(), 0)
-	return err
+	if err := step("папка", d.mkdirs(ctx)); err != nil {
+		return err
+	}
+	name := "itrupanel-check-" + randToken(4) + ".tmp"
+	key := d.keyFor(name)
+	put := func(size int) error {
+		body := bytes.Repeat([]byte("x"), size)
+		headers := map[string]string{}
+		if size > 1<<20 {
+			headers["Expect"] = "100-continue"
+		}
+		res, err := d.do(ctx, "PUT", key, bytes.NewReader(body), int64(size), headers)
+		if err != nil {
+			return err
+		}
+		if res.StatusCode != 200 && res.StatusCode != 201 && res.StatusCode != 204 {
+			return davFail(res, "запись")
+		}
+		io.Copy(io.Discard, io.LimitReader(res.Body, 1<<20))
+		res.Body.Close()
+		return nil
+	}
+	defer d.Delete(context.Background(), key)
+	if err := step("запись 64 Б", put(64)); err != nil {
+		return err
+	}
+	if err := step("запись 2 МБ", put(2<<20)); err != nil {
+		return err
+	}
+	if err := step("чтение", func() error {
+		rc, err := d.Head(ctx, key, 16)
+		if err != nil {
+			return err
+		}
+		defer rc.Close()
+		got, _ := io.ReadAll(rc)
+		if len(got) == 0 {
+			return errf("пустой ответ")
+		}
+		return nil
+	}()); err != nil {
+		return err
+	}
+	return step("удаление", d.Delete(ctx, key))
 }
 
 type davEntry struct {
@@ -287,18 +364,29 @@ func (d *davStore) Upload(ctx context.Context, file, name string) (string, error
 	if st.Size() > 1<<20 {
 		headers["Expect"] = "100-continue"
 	}
-	err = cloudRetryN(ctx, 4, func() error {
-		if err := d.mkdirs(ctx); err != nil {
-			return err
-		}
+	put := func() (*http.Response, error) {
 		f, err := os.Open(file)
 		if err != nil {
-			return permanent(err)
+			return nil, permanent(err)
 		}
 		defer f.Close()
-		res, err := d.do(ctx, "PUT", key, f, st.Size(), headers)
+		return d.do(ctx, "PUT", key, f, st.Size(), headers)
+	}
+	err = cloudRetryN(ctx, 4, func() error {
+		// Папка обычно уже есть, поэтому сначала пишем файл, а создаём папки только если сервер сказал, что их нет.
+		res, err := put()
 		if err != nil {
 			return err
+		}
+		if res.StatusCode == 404 || res.StatusCode == 409 || res.StatusCode == 405 {
+			io.Copy(io.Discard, io.LimitReader(res.Body, 1<<20))
+			res.Body.Close()
+			if err := d.mkdirs(ctx); err != nil {
+				return err
+			}
+			if res, err = put(); err != nil {
+				return err
+			}
 		}
 		if res.StatusCode != 200 && res.StatusCode != 201 && res.StatusCode != 204 {
 			return davFail(res, "загрузка")

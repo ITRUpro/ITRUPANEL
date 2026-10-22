@@ -903,3 +903,60 @@ func TestWebDAVServerErrorRetriedAndExplained(t *testing.T) {
 		t.Fatalf("причина ошибки не показана: %v", err)
 	}
 }
+
+// Проверка подключения повторяет шаги копии и при сбое показывает, на каком именно шаге ответил сервер.
+func TestWebDAVTestReportsFailingStep(t *testing.T) {
+	old := cloudRetryDelay
+	cloudRetryDelay = func(int) time.Duration { return time.Millisecond }
+	defer func() { cloudRetryDelay = old }()
+	h := &webdav.Handler{FileSystem: webdav.NewMemFS(), LockSystem: webdav.NewMemLS()}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "PUT" && r.ContentLength > 1<<20 {
+			io.Copy(io.Discard, r.Body)
+			w.WriteHeader(500)
+			io.WriteString(w, "<error>Upload node is down</error>")
+			return
+		}
+		h.ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+	cl, _ := newDAVStore(BackupWebDAV{URL: srv.URL, User: "u", Pass: "p", Dir: "a/b"})
+	err := cl.Test(context.Background())
+	if err == nil {
+		t.Fatal("сбой записи крупного файла не обнаружен")
+	}
+	for _, want := range []string{"запись 2 МБ", "Ход проверки", "вход: ok", "папка: ok", "запись 64 Б: ok", "Upload node is down"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("в отчёте нет %q: %v", want, err)
+		}
+	}
+	// После проверки временный файл удалён.
+	if objs, _ := cl.List(context.Background()); len(objs) != 0 {
+		t.Fatalf("остался файл проверки: %v", objs)
+	}
+}
+
+// Если папки нет, сначала пробуем писать, а потом создаём папку и повторяем запись; MKCOL на существующую папку не нужен.
+func TestWebDAVUploadCreatesMissingFolderOnlyWhenNeeded(t *testing.T) {
+	h := &webdav.Handler{FileSystem: webdav.NewMemFS(), LockSystem: webdav.NewMemLS()}
+	var mkcols, puts int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "MKCOL":
+			mkcols++
+		case "PUT":
+			puts++
+		}
+		h.ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+	cl, _ := newDAVStore(BackupWebDAV{URL: srv.URL, User: "u", Pass: "p", Dir: "one/two"})
+	f := filepathJoinTemp(t, []byte("data"))
+	if _, err := cl.Upload(context.Background(), f, "a.tar.gz"); err != nil || mkcols != 2 || puts != 2 {
+		t.Fatalf("первая загрузка: %v, MKCOL %d, PUT %d", err, mkcols, puts)
+	}
+	mkcols, puts = 0, 0
+	if _, err := cl.Upload(context.Background(), f, "b.tar.gz"); err != nil || mkcols != 0 || puts != 1 {
+		t.Fatalf("вторая загрузка не должна трогать папки: %v, MKCOL %d, PUT %d", err, mkcols, puts)
+	}
+}

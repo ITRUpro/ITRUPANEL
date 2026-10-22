@@ -2,6 +2,16 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.4
+
+**Import from FASTPANEL and a step-by-step WebDAV connection check.**
+
+- **Import data** can now read a **FASTPANEL** server over SSH (root, or a user with passwordless sudo; password or private key): websites with files, databases with their old passwords, FTP users with their old passwords, mail (mailboxes with their old passwords and messages) and cron jobs; the lists come from FASTPANEL itself (`fastpanel --json`), with a fallback to inspecting the nginx and MySQL settings
+- **Other server over SSH** (ISPmanager, HestiaCP, aaPanel and others): websites, databases and cron jobs
+- verified end to end against a real FASTPANEL installation (sites, PHP, database with data, cron, FTP login and IMAP login with the old passwords, a moved message)
+- not moved from FASTPANEL: DNS (it lives at external providers), mail aliases and forwards, SSL certificates, Node.js applications
+- WebDAV (Yandex Disk, Mail.ru Cloud and others): **Check connection** now runs every step of a backup (sign-in, folder, writing 64 B and 2 MB, reading, deleting) and on failure shows the server's answer for each step; folders are created only when missing
+
 ## 0.2.3
 
 **Fix: backups to Yandex Disk and other WebDAV storage.**

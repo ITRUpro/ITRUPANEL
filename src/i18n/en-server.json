@@ -1154,5 +1154,21 @@
   "Двухэтапная аутентификация: отключение": "Two-step authentication: disabling",
   "Двухэтапная аутентификация: новые резервные коды": "Two-step authentication: new recovery codes",
   "Доступ к панели: разрешённые адреса": "Panel access: allowed addresses",
-  "Автоматическое обновление панели": "Automatic panel update"
+  "Автоматическое обновление панели": "Automatic panel update",
+  "Консольная программа FASTPANEL не найдена: сайты и базы определены по настройкам nginx и MySQL; FTP-пользователи и почта не определены": "The FASTPANEL console program was not found: websites and databases were found through the nginx and MySQL settings; FTP users and mail were not detected",
+  "Список сайтов FASTPANEL не прочитан (%s): сайты определены по настройкам nginx": "The FASTPANEL website list could not be read (%s): websites were found through the nginx settings",
+  "%s: приложение типа «%s» не переносится как приложение, будут скопированы только файлы": "%s: an application of type “%s” is not moved as an application, only the files will be copied",
+  "%s: на FASTPANEL сайт отключён": "%s: the website is disabled on FASTPANEL",
+  "ящики %s: %s": "mailboxes %s: %s",
+  "ящик %s: пароль не найден, пропущен": "mailbox %s: password not found, skipped",
+  "ящик %s: недопустимый путь к письмам, пропущен": "mailbox %s: invalid mail path, skipped",
+  "ящик %s: псевдонимы и пересылки не переносятся": "mailbox %s: aliases and forwards are not moved",
+  "FTP не прочитан: %s": "FTP could not be read: %s",
+  "FTP %s: %s": "FTP %s: %s",
+  "почта не прочитана: %s": "mail could not be read: %s",
+  "почта %s: %s": "mail %s: %s",
+  "непонятный ответ FASTPANEL: %s": "unexpected FASTPANEL response: %s",
+  "Почта, DNS и FTP переносятся только с другой ITRUPANEL или с FASTPANEL": "Mail, DNS and FTP can only be moved from another ITRUPANEL or from FASTPANEL",
+  "WebDAV: сбой на шаге «%s»: %s. Ход проверки: %s": "WebDAV: failed at step “%s”: %s. Check log: %s",
+  "WebDAV (проверка папки): %s": "WebDAV (folder check): %s"
 }

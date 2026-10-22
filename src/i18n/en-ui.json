@@ -1993,5 +1993,15 @@
   "Время установки": "Installation time",
   "Версия панели:": "Panel version:",
   ". Обновление проверяется по подписи и контрольной сумме, перед установкой сохраняется копия программы и настроек. О результате придёт уведомление. Обновить вручную можно в любой момент кнопкой «Обновления» в верхней панели.": ". The update is verified by its signature and checksum, and a copy of the program and settings is saved before installing. You will get a notification with the result. You can still update manually at any time with the “Updates” button in the top bar.",
-  "Скачать архив 0.2.3": "Download version 0.2.3"
+  "Перенос сайтов, баз, почты, DNS, FTP и заданий cron с другой ITRUPANEL, с FASTPANEL или с любого сервера по SSH": "Moving websites, databases, mail, DNS, FTP and cron jobs from another ITRUPANEL, from FASTPANEL or from any server over SSH",
+  "Другой сервер по SSH": "Other server over SSH",
+  "Укажите адрес и данные администратора старой панели ITRUPANEL. Панель сама отдаст сайты, базы, почту, DNS, FTP и cron, а файлы и базы будут переданы напрямую.": "Enter the address and administrator login of the old ITRUPANEL. The panel itself provides websites, databases, mail, DNS, FTP and cron, and files and databases are sent directly.",
+  "Подключение по SSH под root (или под пользователем с sudo без пароля). Список сайтов, баз, FTP и почты читается из самой панели FASTPANEL, а если она не ответит, сервер просматривается по настройкам nginx и MySQL. Переносятся сайты, базы (с паролями), FTP-пользователи, почта с письмами и cron.": "Connect over SSH as root (or as a user with passwordless sudo). The lists of websites, databases, FTP and mail are read from FASTPANEL itself; if it does not answer, the server is inspected through the nginx and MySQL settings. Websites, databases (with passwords), FTP users, mail with messages and cron jobs are moved.",
+  "Подключение по SSH под root (или под пользователем с sudo без пароля). Сайты определяются по настройкам nginx. Переносятся сайты, базы и cron; почта, DNS и FTP — только с ITRUPANEL и FASTPANEL.": "Connect over SSH as root (or as a user with passwordless sudo). Websites are found through the nginx settings. Websites, databases and cron jobs are moved; mail, DNS and FTP only from ITRUPANEL and FASTPANEL.",
+  "Адрес сервера": "Server address",
+  "Порт SSH": "SSH port",
+  "или закрытый ключ SSH (без пароля, если вход по ключу)": "or an SSH private key (without a passphrase, if you sign in by key)",
+  "Логины, пароли и ключи хранятся только в памяти панели на время переноса (до трёх часов), на диск и в журналы не записываются. На старом сервере ничего не изменяется.": "Logins, passwords and keys are kept only in the panel’s memory while the transfer runs (up to three hours) and are never written to disk or logs. Nothing is changed on the old server.",
+  "Ключ SSH-сервера": "SSH server key",
+  "Скачать архив 0.2.4": "Download version 0.2.4"
 }
