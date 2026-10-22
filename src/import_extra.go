@@ -388,7 +388,7 @@ func impTransferBackupCloud(j *Job, b impExportBackup) ImpItemResult {
 			res.Detail = "некорректные настройки WebDAV: " + firstLine(err.Error())
 			return res
 		}
-		cl = &davStore{c: c, hc: cloudHTTP(c.Insecure)}
+		cl = &davStore{c: c, hc: cloudHTTP1(c.Insecure)}
 		where = strings.TrimPrefix(strings.TrimPrefix(c.URL, "https://"), "http://")
 		set = func(st *Settings) { st.BackupDAV = c }
 	case cloudDropbox:

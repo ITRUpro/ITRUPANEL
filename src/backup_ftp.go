@@ -232,7 +232,7 @@ func registerBackupFTP() {
 				return nil, err
 			}
 			in.WebDAV = n
-			cloud = &davStore{c: n, hc: cloudHTTP(n.Insecure)}
+			cloud = &davStore{c: n, hc: cloudHTTP1(n.Insecure)}
 		case cloudDropbox:
 			n, err := dropboxNormalize(in.Dropbox)
 			if err != nil {

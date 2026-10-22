@@ -2,6 +2,14 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.3
+
+**Fix: backups to Yandex Disk and other WebDAV storage.**
+
+- uploads use HTTP/1.1 only, send no extra content type, and use `Expect: 100-continue` for files over 1 MB, so the server can refuse before any data is sent
+- on temporary server errors (500, 503) the backup is sent again, up to four times
+- the error message now shows the explanation given by the server
+
 ## 0.2.2
 
 **More cloud storage for backups, two-step authentication and optional automatic updates.**

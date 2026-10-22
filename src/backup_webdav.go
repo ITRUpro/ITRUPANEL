@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
-	"time"
 )
 
 // Хранение копий по WebDAV: Яндекс.Диск, Облако Mail.ru и любой другой сервер WebDAV (Nextcloud, ownCloud, …).
@@ -74,7 +74,7 @@ func newDAVStore(c BackupWebDAV) (cloudStore, error) {
 	if err != nil {
 		return nil, errf("WebDAV не настроен: подключите хранилище, где лежит эта копия")
 	}
-	return &davStore{c: n, hc: cloudHTTP(n.Insecure)}, nil
+	return &davStore{c: n, hc: cloudHTTP1(n.Insecure)}, nil
 }
 
 func (d *davStore) Kind() string { return cloudWebDAV }
@@ -127,8 +127,19 @@ func (d *davStore) do(ctx context.Context, method, p string, body io.Reader, siz
 	return res, nil
 }
 
+// davBodyNote возвращает короткое пояснение из тела ответа (без разметки): серверы часто пишут туда причину ошибки.
+func davBodyNote(b []byte) string {
+	t := regexp.MustCompile(`<[^>]*>`).ReplaceAllString(string(b), " ")
+	t = strings.Join(strings.Fields(t), " ")
+	if len(t) > 160 {
+		t = t[:160] + "…"
+	}
+	return t
+}
+
 // davFail переводит ответ сервера в понятное сообщение; тело читается и закрывается.
 func davFail(res *http.Response, action string) error {
+	body, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
 	io.Copy(io.Discard, io.LimitReader(res.Body, 1<<20))
 	res.Body.Close()
 	var msg string
@@ -151,6 +162,9 @@ func davFail(res *http.Response, action string) error {
 		msg = "в хранилище не хватает места"
 	default:
 		msg = res.Status
+		if note := davBodyNote(body); note != "" {
+			msg += " (" + note + ")"
+		}
 	}
 	err := errf("WebDAV (%s): %s", action, msg)
 	switch res.StatusCode {
@@ -267,7 +281,13 @@ func (d *davStore) Upload(ctx context.Context, file, name string) (string, error
 		return "", err
 	}
 	key := d.keyFor(name)
-	err = cloudRetry(ctx, func() error {
+	// Как у curl -T и davfs2: без Content-Type, а для больших файлов с «Expect: 100-continue» — сервер может отказать
+	// до передачи данных (нет места, нет прав, ошибка на его стороне), и панель не будет зря гнать гигабайты.
+	headers := map[string]string{}
+	if st.Size() > 1<<20 {
+		headers["Expect"] = "100-continue"
+	}
+	err = cloudRetryN(ctx, 4, func() error {
 		if err := d.mkdirs(ctx); err != nil {
 			return err
 		}
@@ -276,7 +296,7 @@ func (d *davStore) Upload(ctx context.Context, file, name string) (string, error
 			return permanent(err)
 		}
 		defer f.Close()
-		res, err := d.do(ctx, "PUT", key, f, st.Size(), map[string]string{"Content-Type": "application/gzip"})
+		res, err := d.do(ctx, "PUT", key, f, st.Size(), headers)
 		if err != nil {
 			return err
 		}
@@ -368,5 +388,3 @@ func (d *davStore) List(ctx context.Context) ([]cloudObject, error) {
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil
 }
-
-var _ = time.Second

@@ -150,15 +150,32 @@ func cloudHTTP(insecure bool) *http.Client {
 	return &http.Client{Transport: tr}
 }
 
+// cloudHTTP1 — то же, но только по HTTP/1.1: серверы WebDAV (в частности Яндекс.Диск) надёжнее работают с ним,
+// как с curl и davfs2, а не по HTTP/2.
+func cloudHTTP1(insecure bool) *http.Client {
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.ForceAttemptHTTP2 = false
+	tr.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{}
+	cfg := &tls.Config{InsecureSkipVerify: insecure}
+	tr.TLSClientConfig = cfg
+	tr.ExpectContinueTimeout = 10 * time.Second
+	return &http.Client{Transport: tr}
+}
+
+// cloudRetryDelay — пауза перед повторной попыткой (n — номер повтора, с единицы); переменная, чтобы тесты были быстрыми.
+var cloudRetryDelay = func(n int) time.Duration { return time.Duration(n*n) * 2 * time.Second }
+
 // cloudRetry повторяет операцию при временных ошибках сети и сервера (до трёх попыток).
-func cloudRetry(ctx context.Context, f func() error) error {
+func cloudRetry(ctx context.Context, f func() error) error { return cloudRetryN(ctx, 3, f) }
+
+func cloudRetryN(ctx context.Context, attempts int, f func() error) error {
 	var err error
-	for attempt := 0; attempt < 3; attempt++ {
+	for attempt := 0; attempt < attempts; attempt++ {
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-time.After(time.Duration(attempt*attempt) * 2 * time.Second):
+			case <-time.After(cloudRetryDelay(attempt)):
 			}
 		}
 		if err = f(); err == nil {

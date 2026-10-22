@@ -1993,5 +1993,5 @@
   "Время установки": "Installation time",
   "Версия панели:": "Panel version:",
   ". Обновление проверяется по подписи и контрольной сумме, перед установкой сохраняется копия программы и настроек. О результате придёт уведомление. Обновить вручную можно в любой момент кнопкой «Обновления» в верхней панели.": ". The update is verified by its signature and checksum, and a copy of the program and settings is saved before installing. You will get a notification with the result. You can still update manually at any time with the “Updates” button in the top bar.",
-  "Скачать архив 0.2.2": "Download version 0.2.2"
+  "Скачать архив 0.2.3": "Download version 0.2.3"
 }

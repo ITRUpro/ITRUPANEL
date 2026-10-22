@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/net/webdav"
 )
@@ -847,5 +848,58 @@ func TestBackupWebDAVSettingsAPI(t *testing.T) {
 	p.BackupDAV.Pass = ""
 	if p.validate() == nil {
 		t.Fatal("пустой пароль в копии принят")
+	}
+}
+
+// Серверная ошибка 500 (как у Яндекс.Диска «500 Server Error») — временная: загрузка повторяется,
+// а в сообщении видна причина из тела ответа.
+func TestWebDAVServerErrorRetriedAndExplained(t *testing.T) {
+	old := cloudRetryDelay
+	cloudRetryDelay = func(int) time.Duration { return time.Millisecond }
+	defer func() { cloudRetryDelay = old }()
+	puts := 0
+	var seenExpect, seenCT string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "MKCOL":
+			w.WriteHeader(405)
+		case "PUT":
+			puts++
+			seenExpect, seenCT = r.Header.Get("Expect"), r.Header.Get("Content-Type")
+			io.Copy(io.Discard, r.Body)
+			if puts <= 2 {
+				w.WriteHeader(500)
+				io.WriteString(w, "<error><message>Temporary upload failure</message></error>")
+				return
+			}
+			w.WriteHeader(201)
+		case "PROPFIND":
+			w.WriteHeader(404)
+		}
+	}))
+	defer srv.Close()
+	cl, _ := newDAVStore(BackupWebDAV{URL: srv.URL, User: "u", Pass: "p", Dir: "x"})
+	f := filepathJoinTemp(t, bytes.Repeat([]byte("z"), 2<<20))
+	if _, err := cl.Upload(context.Background(), f, "a.tar.gz"); err != nil || puts != 3 {
+		t.Fatalf("после двух 500 загрузка должна пройти: %v, запросов %d", err, puts)
+	}
+	if seenCT != "" {
+		t.Fatalf("Content-Type не должен отправляться: %q", seenCT)
+	}
+	_ = seenExpect
+	// Постоянная ошибка 500: сообщение содержит причину.
+	puts = 100
+	srv.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "MKCOL" {
+			w.WriteHeader(405)
+			return
+		}
+		io.Copy(io.Discard, r.Body)
+		w.WriteHeader(500)
+		io.WriteString(w, "<error><message>Disk is broken</message></error>")
+	})
+	_, err := cl.Upload(context.Background(), f, "b.tar.gz")
+	if err == nil || !strings.Contains(err.Error(), "500") || !strings.Contains(err.Error(), "Disk is broken") {
+		t.Fatalf("причина ошибки не показана: %v", err)
 	}
 }
