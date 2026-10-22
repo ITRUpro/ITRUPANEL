@@ -2,9 +2,14 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.10
+
+- the antivirus is now described as two antiviruses, **ClamAV** and **AI-Bolit**, next to the always-on built-in scan; descriptions in the panel update notes and the documentation corrected
+- minor bug fixes
+
 ## 0.2.9
 
-- **AI-Bolit as an optional third antivirus engine**, next to the built-in scan and ClamAV. The panel does not ship it (the scanner and its database have no licence that allows redistribution): in **Antivirus** press **Connect AI-Bolit** and enter the https address of the `ai-bolit.php` file from the developer's page. PHP on the command line is required. The engines run one after another — built-in, ClamAV, AI-Bolit — at the lowest priority and without dangerous PHP functions; every finding shows its engine
+- **AI-Bolit as an optional second antivirus**, next to ClamAV (the built-in scan always runs). The panel does not ship it (the scanner and its database have no licence that allows redistribution): in **Antivirus** press **Connect AI-Bolit** and enter the https address of the `ai-bolit.php` file from the developer's page. PHP on the command line is required. The antiviruses run one after another — built-in, ClamAV, AI-Bolit — at the lowest priority and without dangerous PHP functions; every finding shows its engine
 
 ## 0.2.8
 

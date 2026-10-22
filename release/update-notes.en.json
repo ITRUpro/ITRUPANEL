@@ -1,4 +1,4 @@
 [
-  "Antivirus: AI-Bolit as an optional third engine — connected by the address of the ai-bolit.php file and run together with the built-in scan and ClamAV, one after another.",
+  "Antivirus: AI-Bolit (optional) is a second antivirus next to ClamAV; it is connected by the address of the ai-bolit.php file, and the antiviruses run one after another.",
   "Minor bug fixes."
 ]
