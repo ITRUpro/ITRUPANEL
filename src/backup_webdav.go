@@ -221,6 +221,43 @@ func (d *davStore) mkdirs(ctx context.Context) error {
 	return nil
 }
 
+// davQuota возвращает свободное и занятое место по RFC 4331; ok=false, если сервер этих сведений не даёт.
+func (d *davStore) davQuota(ctx context.Context) (avail, used int64, ok bool) {
+	body := `<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:quota-available-bytes/><d:quota-used-bytes/></d:prop></d:propfind>`
+	res, err := d.do(ctx, "PROPFIND", "/", strings.NewReader(body), int64(len(body)), map[string]string{"Depth": "0", "Content-Type": "application/xml; charset=utf-8"})
+	if err != nil {
+		return 0, 0, false
+	}
+	data, _ := io.ReadAll(io.LimitReader(res.Body, 1<<20))
+	res.Body.Close()
+	if res.StatusCode != 207 && res.StatusCode != 200 {
+		return 0, 0, false
+	}
+	var ms struct {
+		Props []struct {
+			Avail string `xml:"quota-available-bytes"`
+			Used  string `xml:"quota-used-bytes"`
+		} `xml:"response>propstat>prop"`
+	}
+	if xml.Unmarshal(data, &ms) != nil {
+		return 0, 0, false
+	}
+	have := false
+	for _, p := range ms.Props {
+		if strings.TrimSpace(p.Avail) != "" {
+			if _, e := fmt.Sscan(strings.TrimSpace(p.Avail), &avail); e == nil {
+				have = true
+			}
+		}
+		if strings.TrimSpace(p.Used) != "" {
+			fmt.Sscan(strings.TrimSpace(p.Used), &used)
+		}
+	}
+	return avail, used, have
+}
+
+func davHuman(n int64) string { return humanBytes(n) }
+
 // Test проверяет все шаги, которые понадобятся копии: вход, папка, запись небольшого и крупного файла, чтение, удаление.
 // При сбое в сообщении перечислены ответы сервера по шагам: по ним видно, на чём именно остановилось.
 func (d *davStore) Test(ctx context.Context) error {
@@ -235,6 +272,15 @@ func (d *davStore) Test(ctx context.Context) error {
 	}
 	if err := step("вход", func() error { _, e := d.davExists(ctx, "/"); return e }()); err != nil {
 		return err
+	}
+	if avail, used, ok := d.davQuota(ctx); ok {
+		var qerr error
+		if avail < 8<<20 {
+			qerr = errf("в хранилище почти нет свободного места: свободно %s, занято %s. Освободите место или увеличьте тариф", davHuman(avail), davHuman(used))
+		}
+		if err := step("место", qerr); err != nil {
+			return err
+		}
 	}
 	if err := step("папка", d.mkdirs(ctx)); err != nil {
 		return err
@@ -358,6 +404,9 @@ func (d *davStore) Upload(ctx context.Context, file, name string) (string, error
 		return "", err
 	}
 	key := d.keyFor(name)
+	if avail, _, ok := d.davQuota(ctx); ok && avail < st.Size() {
+		return "", permanent(errf("WebDAV (загрузка): в хранилище не хватает места: свободно %s, нужно %s", davHuman(avail), davHuman(st.Size())))
+	}
 	// Как у curl -T и davfs2: без Content-Type, а для больших файлов с «Expect: 100-continue» — сервер может отказать
 	// до передачи данных (нет места, нет прав, ошибка на его стороне), и панель не будет зря гнать гигабайты.
 	headers := map[string]string{}

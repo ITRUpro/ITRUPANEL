@@ -960,3 +960,39 @@ func TestWebDAVUploadCreatesMissingFolderOnlyWhenNeeded(t *testing.T) {
 		t.Fatalf("вторая загрузка не должна трогать папки: %v, MKCOL %d, PUT %d", err, mkcols, puts)
 	}
 }
+
+// Если сервер сообщает, что места почти нет (RFC 4331), проверка и загрузка говорят об этом прямо,
+// а не ждут загадочной ошибки сервера.
+func TestWebDAVQuotaIsReported(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "PROPFIND" && !strings.Contains(readAll(r), "quota-available-bytes") {
+			w.WriteHeader(207)
+			io.WriteString(w, `<?xml version="1.0"?><d:multistatus xmlns:d="DAV:"><d:response><d:href>/</d:href></d:response></d:multistatus>`)
+			return
+		}
+		if r.Method == "PROPFIND" {
+			w.WriteHeader(207)
+			io.WriteString(w, `<?xml version="1.0"?><d:multistatus xmlns:d="DAV:"><d:response><d:href>/</d:href><d:propstat><d:prop><d:quota-available-bytes>1048576</d:quota-available-bytes><d:quota-used-bytes>10737418240</d:quota-used-bytes></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>`)
+			return
+		}
+		w.WriteHeader(500)
+	}))
+	defer srv.Close()
+	cl, _ := newDAVStore(BackupWebDAV{URL: srv.URL, User: "u", Pass: "p", Dir: "x"})
+	err := cl.Test(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "свободного места") || !strings.Contains(err.Error(), "место") {
+		t.Fatalf("проверка не сообщила о нехватке места: %v", err)
+	}
+	f := filepathJoinTemp(t, bytes.Repeat([]byte("z"), 3<<20))
+	if _, err := cl.Upload(context.Background(), f, "a.tar.gz"); err == nil || !strings.Contains(err.Error(), "не хватает места") {
+		t.Fatalf("загрузка не сообщила о нехватке места: %v", err)
+	}
+}
+
+var lastBody string
+
+func readAll(r *http.Request) string {
+	b, _ := io.ReadAll(r.Body)
+	lastBody = string(b)
+	return lastBody
+}
