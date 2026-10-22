@@ -332,7 +332,7 @@ async function nginxCustom(domain) {
     fields: [
       { type: 'html', html: "<p class=\"hint\">A location / or location ^~ / block replaces the panel default. Other handlers, including PHP, remain in the configuration. Changes are not applied if nginx validation fails.</p>" },
       { name: 'text', label: "Custom rules (inserted inside server {})", type: 'textarea', rows: 14, value: d.custom },
-      { type: 'html', html: `<label>Generated configuration (read only)</label><pre class="out" style="max-height:340px">${h(d.vhost)}</pre>` },
+      { type: 'html', html: `<label>Generated configuration (read only)</label><pre class="out code" style="max-height:340px">${h(d.vhost)}</pre>` },
     ],
     submit: async (v) => { await api('sites.custom.save', { domain, text: v.text }); toast("Saved, nginx reloaded", 'ok'); },
   });
@@ -756,7 +756,7 @@ async function backupDownload(r) {
   if (r.kind !== 'database') { location.href = '/api/backups/download?id=' + encodeURIComponent(r.id); return; }
   try {
     const res = await api('backups.extract', { id: r.id, dbs: [r.db] });
-    watchJob(res.job, { onComplete: (j) => { if (j.status === 'done' && j.result?.download) location.href = j.result.download; } });
+    waitJobDownload(res.job);
   } catch (e) { fail(e); }
 }
 // Содержимое копии (как в ISPmanager): файлы сайта по папкам и базы данных; выбранное можно
@@ -774,7 +774,7 @@ async function backupContents(r) {
     if (what === 'download') {
       try {
         const res = await api('backups.extract', { id: r.id, paths, dbs });
-        watchJob(res.job, { onComplete: (j) => { if (j.status === 'done' && j.result?.download) location.href = j.result.download; } });
+        waitJobDownload(res.job);
       } catch (e) { fail(e); }
       return;
     }
@@ -1481,7 +1481,7 @@ page('wwwlogs', {
     const kinds = { access: "access", error: "nginx errors", php: "PHP errors" };
     p.innerHTML = `<div class="toolbar"><select class="search-input" data-f>${files.map((f) => `<option value="${h(f.path)}" ${f === first ? 'selected' : ''}>${h(f.site)} — ${kinds[f.kind]} (${fmtBytes(f.size)})</option>`).join('')}</select>
       <input class="search-input" data-q placeholder="Filter: IP, address, code…"><select class="search-input" data-n style="min-width:110px"><option>100</option><option selected>300</option><option>1000</option><option>5000</option></select>
-      <button class="btn" data-r>${icon('refresh')}Update</button><label class="check"><input type="checkbox" data-live><span>Auto refresh</span></label></div><pre class="out" style="max-height:calc(100vh - 330px)"></pre>`;
+      <button class="btn" data-r>${icon('refresh')}Update</button><label class="check"><input type="checkbox" data-live><span>Auto refresh</span></label></div><pre class="out code" style="max-height:calc(100vh - 330px)"></pre>`;
     const out = $('pre', p);
     let t;
     const load = async () => {

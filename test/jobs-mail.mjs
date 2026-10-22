@@ -74,3 +74,38 @@ test('new mailbox picks selected domain default quota',async()=>{
  await form.submit({local:'info',domain:'one.test',limit:true,quota:5,unit:'GB',enabled:true,name:'Иван'});assert.equal(sent.quota_mb,5120);assert.equal(sent.name,'Иван');assert.equal(sent.address,'info@one.test');
  await form.submit({local:'info',domain:'one.test',limit:false,quota:5,unit:'GB',enabled:true});assert.equal(sent.quota_mb,0);
 });
+
+// Скачивание подготовленного файла (база или выбранное из копии) идёт без окна задачи.
+function downloadHarness(lang, answer) {
+  const out = { toasts: [], fails: [], modals: 0, href: null };
+  const c = vm.createContext({
+    page() {}, $() {}, confirmBox() {}, route() {}, setTimeout, Date,
+    toast: (m) => out.toasts.push(m), fail: (e) => out.fails.push(e.message), modal: () => { out.modals++; return { el: {}, close() {} }; },
+    api: async () => answer(), location: { set href(v) { out.href = v; } },
+  });
+  vm.runInContext(fs.readFileSync(new URL('../src/web/' + lang + 'jobs.js', import.meta.url), 'utf8'), c);
+  return { c, out };
+}
+for (const lang of ['', 'en/']) {
+  test('download job: no dialog window, the file starts as soon as it is ready ' + lang, async () => {
+    let status = 'running';
+    const { c, out } = downloadHarness(lang, () => status === 'running' ? { status } : { status, result: { download: '/api/backups/extracted?f=x.sql.gz' } });
+    c.waitJobDownload('job1');
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(out.modals, 0, 'окно задачи не открывается');
+    assert.equal(out.toasts.length, 1);
+    assert.equal(out.href, null, 'пока файл не готов, скачивание не запускается');
+    status = 'done';
+    await new Promise((r) => setTimeout(r, 1300));
+    assert.equal(out.href, '/api/backups/extracted?f=x.sql.gz', 'скачивание запущено сразу');
+    assert.equal(out.fails.length, 0);
+  });
+  test('download job: an error is a message, not a window ' + lang, async () => {
+    const { c, out } = downloadHarness(lang, () => ({ status: 'error', error: 'нет места' }));
+    c.waitJobDownload('job2');
+    await new Promise((r) => setTimeout(r, 100));
+    assert.deepEqual(out.fails, ['нет места']);
+    assert.equal(out.modals, 0);
+    assert.equal(out.href, null);
+  });
+}

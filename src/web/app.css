@@ -240,7 +240,9 @@ table.grid { width: 100%; border-collapse: collapse; font-size: 13px; line-heigh
 .toast.err { background: var(--err); color: #fff; }
 .toast.ok { background: var(--ok); color: #fff; }
 .toast.warn { background: var(--warn); color: #fff; }
-pre.out { background: #0f1424; color: #d5dcf0; border-radius: 14px; padding: 14px 16px; font: 12.5px/1.55 var(--mono); overflow: auto; max-height: 60vh; white-space: pre-wrap; word-break: break-all; margin: 0; }
+/* Вывод задач и служебные тексты — обычный текст на светлом фоне, без тёмного окна. Код и журналы набраны моноширинным шрифтом. */
+pre.out { background: none; color: var(--text); border-radius: 0; padding: 0; font: 13px/1.6 var(--font); overflow: auto; max-height: 60vh; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+pre.out.code { font: 12.5px/1.55 var(--mono); word-break: break-all; }
 
 /* ---------- разное ---------- */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; }
@@ -327,7 +329,7 @@ pre.out { background: #0f1424; color: #d5dcf0; border-radius: 14px; padding: 14p
   .drawer-head, .drawer-body, .drawer-foot { padding-left: 18px; padding-right: 18px; }
 }
 
-.job-log {max-height: 340px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px;}
+.job-log {max-height: 340px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; color: var(--muted);}
 
 /* Product attribution is part of the embedded interface, not a user setting. */
 .app-copyright { font-size: 11px; color: var(--muted); line-height: 1.6; }

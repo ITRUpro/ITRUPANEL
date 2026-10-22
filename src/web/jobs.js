@@ -39,6 +39,27 @@ function watchJob(id, { onComplete } = {}) {
   poll();
 }
 
+// waitJobDownload ждёт задачу подготовки файла без окна и сразу запускает скачивание, когда файл готов.
+// Ход виден только во всплывающем сообщении; ошибка показывается обычным сообщением.
+function waitJobDownload(id) {
+  toast('Готовим файл для скачивания…', 'ok');
+  const started = Date.now();
+  const poll = async () => {
+    let again = true;
+    try {
+      const j = await api('jobs.get', { id }, { timeout: 15000 });
+      again = j.status === 'running';
+      if (!again) {
+        if (j.status === 'done' && j.result && j.result.download) { location.href = j.result.download; return; }
+        fail(new Error(j.error || 'Не удалось подготовить файл'));
+        return;
+      }
+    } catch (e) { /* сеть моргнула: повторяем запрос */ }
+    if (again && Date.now() - started < 6 * 3600 * 1000) setTimeout(poll, 1000);
+  };
+  poll();
+}
+
 page('jobs', {
   title: 'Задачи',
   async render(view) {

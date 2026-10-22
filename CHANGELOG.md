@@ -2,6 +2,14 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.5
+
+**Interface fixes for backups.**
+
+- the **Stored** column of the backup table says **Cloud** for every cloud kind (Yandex Disk, Mail.ru Cloud, Dropbox, Google Drive, S3) instead of "FTP"; backups attached from a cloud are marked "Imported from the cloud"
+- downloading a database or selected files from a backup starts at once, without a task window
+- task output and other service texts are plain text on a light background instead of a dark box
+
 ## 0.2.4
 
 **Import from FASTPANEL and a step-by-step WebDAV connection check.**
@@ -11,7 +19,6 @@ All notable changes to ITRUPANEL. Release archives and checksums: https://itrupa
 - verified end to end against a real FASTPANEL installation (sites, PHP, database with data, cron, FTP login and IMAP login with the old passwords, a moved message)
 - not moved from FASTPANEL: DNS (it lives at external providers), mail aliases and forwards, SSL certificates, Node.js applications
 - WebDAV (Yandex Disk, Mail.ru Cloud and others): **Check connection** now runs every step of a backup (sign-in, free space, folder, writing 64 B and 2 MB, reading, deleting), shows the server's answer for each step on failure and reports a lack of free space directly; folders are created only when missing
-- the backup table shows **Cloud** in the “Stored” column for every cloud (Yandex Disk, Mail.ru, Dropbox, Google Drive, S3) instead of “FTP”
 
 ## 0.2.3
 
