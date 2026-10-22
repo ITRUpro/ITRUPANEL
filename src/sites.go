@@ -673,12 +673,18 @@ func registerSites() {
 		return map[string]string{"job": id}, nil
 	})
 	api("sites.list", func(q *Req) (any, error) {
+		web := webVersions()
 		mu.Lock()
 		defer mu.Unlock()
 		out := []map[string]any{}
 		for _, s := range store.Sites {
 			c := findCert(s.SSL)
 			row := map[string]any{"site": s, "unicode": toUnicode(s.Domain)}
+			if s.Mode == "php" && s.Backend != "" {
+				row["web_version"] = web[s.Backend]
+			} else {
+				row["web_version"] = web["nginx"]
+			}
 			if c != nil {
 				row["ssl_expires"] = c.Expires
 				row["ssl_type"] = c.Type

@@ -128,6 +128,48 @@ func phpInstalled() []string {
 	return out
 }
 
+var rePHPRelease = regexp.MustCompile(`PHP (\d+\.\d+\.\d+[^\s]*)`)
+
+type phpReleaseCache struct {
+	mtime   time.Time
+	release string
+}
+
+var (
+	phpReleaseMu sync.Mutex
+	phpReleases  = map[string]phpReleaseCache{}
+)
+
+// phpRelease — точный выпуск установленной версии (например, 8.3.14); пусто, если узнать не удалось.
+// Результат запоминается, пока бинарник не изменился (обновление пакета).
+func phpRelease(v string) string {
+	if cfg.Dry {
+		return map[string]string{"8.2": "8.2.28", "8.3": "8.3.21"}[v]
+	}
+	bin := phpFPMBin(v)
+	st, err := os.Stat(bin)
+	if err != nil {
+		return ""
+	}
+	phpReleaseMu.Lock()
+	c, ok := phpReleases[v]
+	phpReleaseMu.Unlock()
+	if ok && c.mtime.Equal(st.ModTime()) {
+		return c.release
+	}
+	out, _ := runTimeout(10*time.Second, "", bin, "-v")
+	rel := ""
+	if m := rePHPRelease.FindStringSubmatch(out); m != nil {
+		rel = m[1]
+	}
+	if rel != "" {
+		phpReleaseMu.Lock()
+		phpReleases[v] = phpReleaseCache{st.ModTime(), rel}
+		phpReleaseMu.Unlock()
+	}
+	return rel
+}
+
 func phpIsInstalled(v string) bool {
 	for _, x := range phpInstalled() {
 		if x == v {
@@ -359,6 +401,7 @@ func registerPHP() {
 			row := map[string]any{"version": v, "installed": installed, "default": v == def, "sites": use[v], "job": jobs[v]}
 			if installed {
 				row["active"] = serviceActive(phpService(v))
+				row["release"] = phpRelease(v)
 			}
 			rows = append(rows, row)
 		}

@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/creack/pty"
@@ -35,6 +37,71 @@ func cpuModel() (string, int) {
 		}
 	}
 	return strings.TrimSpace(model), runtime.NumCPU()
+}
+
+var reApacheVer = regexp.MustCompile(`Apache/(\d+\.\d+\.\d+)`)
+
+// apacheVersion — версия Apache (за nginx); пусто, если он не установлен.
+func apacheVersion() string {
+	if cfg.Dry {
+		return "2.4.62"
+	}
+	if !apacheInstalled() {
+		return ""
+	}
+	bin := "/usr/sbin/apache2"
+	if osInfo.Family == "rhel" {
+		bin = "/usr/sbin/httpd"
+	}
+	out, _ := runTimeout(10*time.Second, "", bin, "-v")
+	if m := reApacheVer.FindStringSubmatch(out); m != nil {
+		return m[1]
+	}
+	return ""
+}
+
+var reNginxVer = regexp.MustCompile(`nginx/(\d+\.\d+\.\d+)`)
+
+func nginxVersion() string {
+	if cfg.Dry {
+		return "1.26.3"
+	}
+	if !have("nginx") {
+		return ""
+	}
+	out, _ := runTimeout(10*time.Second, "", "nginx", "-v")
+	if m := reNginxVer.FindStringSubmatch(out); m != nil {
+		return m[1]
+	}
+	return ""
+}
+
+var (
+	webVerMu   sync.Mutex
+	webVerAt   time.Time
+	webVerData map[string]string
+)
+
+// webVersions — версии веб-серверов для списка сайтов; запоминаются на минуту, чтобы не запускать команды при каждом открытии.
+func webVersions() map[string]string {
+	webVerMu.Lock()
+	defer webVerMu.Unlock()
+	if webVerData == nil || time.Since(webVerAt) > time.Minute || cfg.Dry {
+		webVerData = map[string]string{"nginx": nginxVersion(), "apache": apacheVersion(), "openlitespeed": olsVersion()}
+		webVerAt = time.Now()
+	}
+	return webVerData
+}
+
+// olsVersion — версия OpenLiteSpeed из файла VERSION вендора; пусто, если он не установлен.
+func olsVersion() string {
+	if cfg.Dry {
+		return "1.8.3"
+	}
+	if !olsInstalled() {
+		return ""
+	}
+	return strings.TrimSpace(firstLine(readFile(olsRoot + "/VERSION")))
 }
 
 func verOf(cmd string, args ...string) string {
@@ -112,6 +179,8 @@ func registerSystem() {
 				"nginx":   verOf("nginx", "-v"),
 				"mariadb": verOf("mysql", "--version"),
 				"certbot": verOf("certbot", "--version"),
+				"apache":  apacheVersion(),
+				"ols":     olsVersion(),
 				"pure-ftpd": func() string {
 					if have("pure-ftpd") {
 						return "установлен"

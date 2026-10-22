@@ -302,7 +302,7 @@ page('sites', {
       columns: [
         { t: "Domain", r: (r) => `<div class="site-name">${h(r.unicode)}${def.site === r.site.domain ? " <span class=\"tag acc\" title=\"Opens for the server IP address and names without a website\">default</span>" : ''}<small>${h((r.site.aliases || []).join(', '))}</small></div>` },
         { t: "Owner", r: (r) => h(r.site.user), cls: 'hide-sm' },
-        { t: "Mode", r: (r) => r.site.mode === 'php' ? `<span class="tag acc">PHP ${h(r.site.php)}</span> <span class="tag">${r.site.backend === 'openlitespeed' ? 'OpenLiteSpeed' : r.site.backend === 'apache' ? 'Apache' : 'nginx'}</span>` : r.site.mode === 'proxy' ? `<span class="tag">proxy</span>` : "<span class=\"tag\">static</span>" },
+        { t: "Mode", r: (r) => r.site.mode === 'php' ? `<span class="tag acc">PHP ${h(r.site.php)}</span> <span class="tag">${(r.site.backend === 'openlitespeed' ? 'OpenLiteSpeed' : r.site.backend === 'apache' ? 'Apache' : 'nginx') + (r.web_version ? ' ' + h(r.web_version) : '')}</span>` : (r.site.mode === 'proxy' ? "<span class=\"tag\">proxy</span>" : "<span class=\"tag\">static</span>") + ` <span class="tag">nginx${r.web_version ? ' ' + h(r.web_version) : ''}</span>` },
         { t: 'SSL', r: (r) => { if (!r.site.ssl) return r.site.auto_ssl ? "<span class=\"tag acc\" title=\"Issued automatically once the domain points to the server\">auto: awaiting DNS</span>" : "<span class=\"tag\">none</span>"; const d = Math.floor((new Date(r.ssl_expires) - Date.now()) / 864e5); return `<span class="ssl-cell"><span class="tag ${d < 14 ? 'warn' : 'ok'}">${icon('lock')} ${d} days</span>${r.site.auto_ssl ? "<span class=\"tag\">auto</span>" : ''}</span>`; } },
         { t: "Status", r: (r) => r.site.suspended ? "<span class=\"tag err\">disabled</span>" : "<span class=\"tag ok\">running</span>", cls: 'hide-sm' },
       ],
@@ -1645,6 +1645,7 @@ page('php', {
         columns: [
           { t: "Version", r: (r) => `<b style="font-size:16px">PHP ${h(r.version)}</b> ${r.default ? "<span class=\"tag acc\">default</span>" : ''}` },
           { t: "Status", r: (r) => r.job === 'running' ? "<span class=\"tag acc\"><span class=\"spin\" style=\"width:12px;height:12px;border-width:2px\"></span> installing</span>" : r.job === 'error' ? "<span class=\"tag err\">installation error</span>" : r.installed ? (r.active ? "<span class=\"tag ok\">running</span>" : "<span class=\"tag warn\">stopped</span>") : "<span class=\"tag\">not installed</span>" },
+          { t: "Release", r: (r) => r.installed && r.release ? h(r.release) : '<span class="muted">—</span>', cls: 'nowrap' },
           { t: "Sites", r: (r) => r.sites || '—' },
         ],
         actions: (r) => r.job === 'running' ? [] : r.installed ? [
@@ -1743,6 +1744,7 @@ page('info', {
       <div>Load</div><div>${(d.load || []).map((x) => x.toFixed(2)).join(' / ')}</div>
       <div>Server time</div><div>${h(d.time)}</div>
       <div>nginx</div><div class="mono">${h(d.versions.nginx || "not installed")}</div>
+      ${d.versions.apache ? `<div>Apache</div><div class="mono">${h(d.versions.apache)}</div>` : ''}${d.versions.ols ? `<div>OpenLiteSpeed</div><div class="mono">${h(d.versions.ols)}</div>` : ''}
       <div>MariaDB</div><div class="mono">${h(d.versions.mariadb || "not installed")}</div>
       <div>certbot</div><div class="mono">${h(d.versions.certbot || "not installed")}</div>
       <div>Panel</div><div>ITRUPANEL ${h(d.panel)} · sites: ${d.sites}, databases: ${d.dbs}</div></div>`;

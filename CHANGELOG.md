@@ -2,6 +2,11 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.11
+
+- **PHP**: the version list has a new **Release** column showing the exact release installed on the server (for example 8.3.36)
+- **Websites**: the version of the web server (nginx, Apache, OpenLiteSpeed) is shown next to its name in the sites list and in the server information
+
 ## 0.2.10
 
 - the antivirus is now described as two antiviruses, **ClamAV** and **AI-Bolit**, next to the always-on built-in scan; descriptions in the panel update notes and the documentation corrected

@@ -302,7 +302,7 @@ page('sites', {
       columns: [
         { t: 'Домен', r: (r) => `<div class="site-name">${h(r.unicode)}${def.site === r.site.domain ? ' <span class="tag acc" title="Открывается по IP-адресу сервера и по именам без сайта">по умолчанию</span>' : ''}<small>${h((r.site.aliases || []).join(', '))}</small></div>` },
         { t: 'Владелец', r: (r) => h(r.site.user), cls: 'hide-sm' },
-        { t: 'Режим', r: (r) => r.site.mode === 'php' ? `<span class="tag acc">PHP ${h(r.site.php)}</span> <span class="tag">${r.site.backend === 'openlitespeed' ? 'OpenLiteSpeed' : r.site.backend === 'apache' ? 'Apache' : 'nginx'}</span>` : r.site.mode === 'proxy' ? `<span class="tag">прокси</span>` : '<span class="tag">статика</span>' },
+        { t: 'Режим', r: (r) => r.site.mode === 'php' ? `<span class="tag acc">PHP ${h(r.site.php)}</span> <span class="tag">${(r.site.backend === 'openlitespeed' ? 'OpenLiteSpeed' : r.site.backend === 'apache' ? 'Apache' : 'nginx') + (r.web_version ? ' ' + h(r.web_version) : '')}</span>` : (r.site.mode === 'proxy' ? '<span class="tag">прокси</span>' : '<span class="tag">статика</span>') + ` <span class="tag">nginx${r.web_version ? ' ' + h(r.web_version) : ''}</span>` },
         { t: 'SSL', r: (r) => { if (!r.site.ssl) return r.site.auto_ssl ? '<span class="tag acc" title="Выпустится автоматически, когда домен укажет на сервер">авто: ждёт DNS</span>' : '<span class="tag">нет</span>'; const d = Math.floor((new Date(r.ssl_expires) - Date.now()) / 864e5); return `<span class="ssl-cell"><span class="tag ${d < 14 ? 'warn' : 'ok'}">${icon('lock')} ${d} дн.</span>${r.site.auto_ssl ? '<span class="tag">авто</span>' : ''}</span>`; } },
         { t: 'Состояние', r: (r) => r.site.suspended ? '<span class="tag err">выключен</span>' : '<span class="tag ok">работает</span>', cls: 'hide-sm' },
       ],
@@ -1645,6 +1645,7 @@ page('php', {
         columns: [
           { t: 'Версия', r: (r) => `<b style="font-size:16px">PHP ${h(r.version)}</b> ${r.default ? '<span class="tag acc">по умолчанию</span>' : ''}` },
           { t: 'Состояние', r: (r) => r.job === 'running' ? '<span class="tag acc"><span class="spin" style="width:12px;height:12px;border-width:2px"></span> устанавливается</span>' : r.job === 'error' ? '<span class="tag err">ошибка установки</span>' : r.installed ? (r.active ? '<span class="tag ok">работает</span>' : '<span class="tag warn">остановлен</span>') : '<span class="tag">не установлен</span>' },
+          { t: 'Релиз', r: (r) => r.installed && r.release ? h(r.release) : '<span class="muted">—</span>', cls: 'nowrap' },
           { t: 'Сайтов', r: (r) => r.sites || '—' },
         ],
         actions: (r) => r.job === 'running' ? [] : r.installed ? [
@@ -1743,6 +1744,7 @@ page('info', {
       <div>Нагрузка</div><div>${(d.load || []).map((x) => x.toFixed(2)).join(' / ')}</div>
       <div>Время сервера</div><div>${h(d.time)}</div>
       <div>nginx</div><div class="mono">${h(d.versions.nginx || 'не установлен')}</div>
+      ${d.versions.apache ? `<div>Apache</div><div class="mono">${h(d.versions.apache)}</div>` : ''}${d.versions.ols ? `<div>OpenLiteSpeed</div><div class="mono">${h(d.versions.ols)}</div>` : ''}
       <div>MariaDB</div><div class="mono">${h(d.versions.mariadb || 'не установлена')}</div>
       <div>certbot</div><div class="mono">${h(d.versions.certbot || 'не установлен')}</div>
       <div>Панель</div><div>ITRUPANEL ${h(d.panel)} · сайтов: ${d.sites}, баз: ${d.dbs}</div></div>`;

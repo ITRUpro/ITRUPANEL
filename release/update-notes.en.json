@@ -1,4 +1,5 @@
 [
-  "Antivirus: AI-Bolit (optional) is a second antivirus next to ClamAV; it is connected by the address of the ai-bolit.php file, and the antiviruses run one after another.",
+  "PHP: the version list has a new Release column showing the exact release installed on the server (for example 8.3.36).",
+  "Websites: the version of the web server (nginx, Apache, OpenLiteSpeed) is shown next to its name; Apache and OpenLiteSpeed versions are also in the server information.",
   "Minor bug fixes."
 ]
