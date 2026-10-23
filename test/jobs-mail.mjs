@@ -116,3 +116,28 @@ for (const lang of ['', 'en/']) {
     assert.equal(out.href, null);
   });
 }
+
+test('spam form sends greylisting and DNSBL settings and validates them', async () => {
+  let form; const calls = [];
+  const c = vm.createContext({ page() {}, openForm(f) { form = f; }, api: async (n, v) => { calls.push([n, v]); return { job: 'j' }; }, watchJob() {} });
+  vm.runInContext(fs.readFileSync(new URL('../src/web/mail.js', import.meta.url), 'utf8'), c);
+  const catalog = [{ id: 'spamhaus', zone: 'zen.spamhaus.org', title: 'Spamhaus ZEN' }, { id: 'nixspam', zone: 'ix.dnsbl.manitu.net', title: 'NiX' }];
+  await vm.runInContext('mailSpamForm', c)({ spam: { installed: true, enabled: true, mark: 6, reject: 15, rbl_skip: ['nixspam'], rbl_custom: [{ zone: 'a.example.net', score: 2 }] }, rbl_catalog: catalog });
+  // Поля показывают текущее состояние
+  const val = (name) => form.fields.find((f) => f.name === name).value;
+  assert.equal(val('rbl'), true); assert.equal(val('rbl_spamhaus'), true); assert.equal(val('rbl_nixspam'), false); assert.equal(val('rbl_custom'), 'a.example.net 2');
+  const base = { enabled: true, mark: 6, reject: 15, greylist: true, greylist_score: 4, greylist_delay: 7, rbl: true, rbl_spamhaus: true, rbl_nixspam: false, rbl_custom: 'bl.example.net 3.5\nx.example.org' };
+  await form.submit(base);
+  const body = calls.at(-1)[1];
+  assert.equal(calls.at(-1)[0], 'mail.spam.setup');
+  assert.equal(body.greylist, true); assert.equal(body.greylist_score, 4); assert.equal(body.greylist_delay, 7);
+  assert.equal(body.rbl_off, false); assert.deepEqual(Array.from(body.rbl_skip), ['nixspam']);
+  assert.deepEqual(JSON.parse(JSON.stringify(body.rbl_custom)), [{ zone: 'bl.example.net', score: 3.5 }, { zone: 'x.example.org', score: 3 }]);
+  await form.submit({ ...base, rbl: false });
+  assert.equal(calls.at(-1)[1].rbl_off, true);
+  const before = calls.length;
+  await assert.rejects(form.submit({ ...base, greylist_score: 6 }), /Greylisting/);
+  await assert.rejects(form.submit({ ...base, greylist_delay: 99 }), /Задержка/);
+  await assert.rejects(form.submit({ ...base, rbl_custom: 'a.example.net 50' }), /Свои списки/);
+  assert.equal(calls.length, before, 'ошибочные значения не отправляются на сервер');
+});

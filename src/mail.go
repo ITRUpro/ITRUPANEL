@@ -861,7 +861,7 @@ func registerMail() {
 		for _, b := range m.Boxes {
 			boxes = append(boxes, map[string]any{"address": b.Address, "name": b.Name, "enabled": b.Enabled, "created": b.Created, "quota_mb": b.QuotaMB, "has_password": b.Secret != ""})
 		}
-		return map[string]any{"quota_active": strings.Contains(readFile("/etc/dovecot/dovecot.conf"), "# ITRUPANEL quotas"), "spam": m.Spam, "spam_active": m.Spam.Enabled && serviceActive("rspamd"), "webmail": m.Webmail, "ready": m.Ready, "hostname": m.Hostname, "certificate": m.Certificate, "domains": m.Domains, "site_domains": mailSiteDomains(m), "boxes": boxes, "aliases": m.Aliases, "forwards": m.Forwards, "certs": mailCertificateList(), "smtp": m.Ready && serviceActive("postfix"), "imap": m.Ready && serviceActive("dovecot"), "dkim": m.Ready && serviceActive("opendkim")}, nil
+		return map[string]any{"quota_active": strings.Contains(readFile("/etc/dovecot/dovecot.conf"), "# ITRUPANEL quotas"), "spam": m.Spam, "rbl_catalog": spamRBLCatalog, "spam_active": m.Spam.Enabled && serviceActive("rspamd"), "webmail": m.Webmail, "ready": m.Ready, "hostname": m.Hostname, "certificate": m.Certificate, "domains": m.Domains, "site_domains": mailSiteDomains(m), "boxes": boxes, "aliases": m.Aliases, "forwards": m.Forwards, "certs": mailCertificateList(), "smtp": m.Ready && serviceActive("postfix"), "imap": m.Ready && serviceActive("dovecot"), "dkim": m.Ready && serviceActive("opendkim")}, nil
 	})
 	apiOp("mail.setup", "Настройка почты", func(q *Req) (any, error) {
 		var in struct {

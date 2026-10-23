@@ -62,7 +62,7 @@ The panel is **free for personal and commercial use**, including hosting for you
 | **Websites** | Nginx + PHP-FPM, static sites, reverse proxy, per-site system user and PHP version, aliases, Cyrillic domains, redirects, gzip, site templates (WordPress, Laravel, Joomla, 1C-Bitrix, SPA and your own), custom Nginx directives, default site, optional Apache or OpenLiteSpeed backend |
 | **PHP** | Several PHP versions side by side, about 70 extensions you can install, turn off or remove (including ionCube Loader), `php.ini` editor |
 | **Databases** | MariaDB databases and users, phpMyAdmin, dump import and export, per-IP access, extra MySQL/MariaDB servers in Docker |
-| **Mail** | Postfix, Dovecot, OpenDKIM, Rspamd antispam, Roundcube webmail, quotas, aliases, forwarding, DNS checks |
+| **Mail** | Postfix, Dovecot, OpenDKIM, Rspamd antispam with greylisting and DNSBL controls, Roundcube webmail, quotas, aliases, forwarding, DNS checks |
 | **DNS and SSL** | BIND zones and records, Let’s Encrypt with automatic issue and renewal, self-signed and custom certificates |
 | **Files and FTP** | Browser file manager with a code editor (syntax highlighting, find and replace), recycle bin, Pure-FTPd users |
 | **Backups** | Files, databases and settings; full and incremental chains; stored on the server, on FTP or in the cloud — Yandex Disk, Mail.ru Cloud, Dropbox, Google Drive, any WebDAV (Nextcloud, ownCloud) or any S3-compatible storage (Amazon S3, Yandex Object Storage, Cloudflare R2, Wasabi, DigitalOcean Spaces, MinIO), alone or together with the server; browse a backup and restore only what you need |

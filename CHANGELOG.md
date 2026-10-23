@@ -2,6 +2,10 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.15
+
+- **Mail: greylisting and DNSBL in the Rspamd antispam window.** Greylisting (off by default) temporarily rejects messages from unknown senders with a spam score from a set threshold and accepts the retry after a chosen delay (1–60 minutes); authenticated users and local mail are not affected. DNSBL: the seven lists Rspamd checks by default (Spamhaus ZEN, NiX Spam, Blocklist.de, Virusfree, SenderScore, Mailspike, DNSWL) can be turned off one by one or all at once, and you can add up to 10 of your own lists with a score. The settings are written to `local.d`, checked with `rspamadm configtest` and rolled back on an error; the generated configuration was verified with Rspamd 3.4 on Debian 12
+
 ## 0.2.14
 
 - **Site templates**: ready sets of nginx rules for a type of site — WordPress, Laravel / Symfony, Joomla, 1C-Bitrix, single-page application and "Protect service files" — and your own templates. A template is chosen in the site form; the panel keeps the base (ports, SSL, protection, PHP, closed service files) and the template only adds rules. Rules can use the variables `%DOMAIN%`, `%ROOT%`, `%USER%`, `%PHP%`, `%SOCK%`. Changing a template is applied to all its sites at once, nginx checks the result and everything is restored if it finds an error. The built-in templates were checked with a real nginx on Debian 12 in PHP and static modes

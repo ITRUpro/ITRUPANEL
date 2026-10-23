@@ -131,15 +131,41 @@ async function mailQuotaUsage(box) {
 }
 async function mailSpamForm(data) {
   const s = data.spam || {};
-  openForm({title: 'Антиспам Rspamd', ok: s.installed ? 'Применить' : 'Установить', fields: [
+  const en = typeof window !== 'undefined' && window.PanelLanguage?.language === 'en';
+  const cat = data.rbl_catalog || [];
+  const skip = new Set(s.rbl_skip || []);
+  const lists = cat.map((x) => ({ name: 'rbl_' + x.id, label: ((en && x.title_en) || x.title) + ' · ' + x.zone, type: 'checkbox', value: !skip.has(x.id), hint: (en && x.desc_en) || x.desc, show: (v) => v.rbl }));
+  openForm({title: 'Антиспам Rspamd', ok: s.installed ? 'Применить' : 'Установить', wide: true, fields: [
     {name:'enabled',label:'Фильтрация включена',type:'checkbox',value:s.installed ? !!s.enabled : true},
     {name:'mark',label:'Помечать как спам от балла',type:'number',value:s.mark || 6},
     {name:'reject',label:'Отклонять от балла',type:'number',value:s.reject || 15},
     {type:'html',html:'<p class="hint">Подозрительные письма получают заголовки проверки и пометку [SPAM] в теме. Явный спам отклоняется до доставки. Порог отклонения должен быть выше порога пометки. При недоступности фильтра отправителю возвращается временная ошибка для повторной доставки. Автоматического перемещения в «Спам» и проверки вложений антивирусом здесь нет.</p>'},
+    {type:'section',label:'Greylisting (серый список)'},
+    {name:'greylist',label:'Включить greylisting',type:'checkbox',value:!!s.greylist,hint:'Письмо от незнакомого отправителя со счётом спама от заданного порога получает временный отказ; настоящий почтовый сервер повторит доставку через несколько минут, а спам-ботам это обычно не под силу. Авторизованных пользователей и локальную почту это не касается. Первое письмо от нового отправителя приходит с задержкой.'},
+    {name:'greylist_score',label:'Откладывать письма от балла',type:'number',value:s.greylist_score || 4,show:(v)=>v.greylist,hint:'Должен быть ниже порога пометки. Чем ниже балл, тем больше писем задерживается.'},
+    {name:'greylist_delay',label:'Через сколько минут принимать повторную доставку',type:'number',value:s.greylist_delay || 5,show:(v)=>v.greylist},
+    {type:'section',label:'Чёрные списки DNSBL'},
+    {name:'rbl',label:'Проверять отправителей по спискам DNSBL',type:'checkbox',value:!s.rbl_off,hint:'Spamhaus и ряд других списков не отвечают публичным DNS (8.8.8.8, 1.1.1.1): запросы блокируются, и письмо выглядит «чистым». Для проверки нужен собственный резолвер сервера; работу DNSBL показывает проверка репутации на странице почты.'},
+    ...lists,
+    {name:'rbl_custom',label:'Свои списки DNSBL',type:'textarea',rows:3,value:(s.rbl_custom || []).map((c) => c.zone + ' ' + c.score).join('\n'),placeholder:'bl.example.net 3',show:(v)=>v.rbl,hint:'По одному в строке: адрес списка и балл, который добавляется письму, если отправитель в списке (от 0,1 до 20).'},
   ],submit:async v=>{
-    v.mark=Number(v.mark);v.reject=Number(v.reject);
-    if(!Number.isInteger(v.mark)||!Number.isInteger(v.reject)||v.mark<1||v.reject<=v.mark||v.reject>100)throw new Error('Укажите целые пороги: 1 ≤ пометка < отклонение ≤ 100');
-    const r=await api('mail.spam.setup',v);watchJob(r.job);
+    const mark=Number(v.mark),reject=Number(v.reject);
+    if(!Number.isInteger(mark)||!Number.isInteger(reject)||mark<1||reject<=mark||reject>100)throw new Error('Укажите целые пороги: 1 ≤ пометка < отклонение ≤ 100');
+    const body={installed:!!s.installed,enabled:!!v.enabled,mark,reject};
+    body.greylist=!!v.greylist;
+    if(body.greylist){
+      body.greylist_score=Number(v.greylist_score);body.greylist_delay=Number(v.greylist_delay);
+      if(!Number.isInteger(body.greylist_score)||body.greylist_score<1||body.greylist_score>=mark)throw new Error('Greylisting включается с балла от 1 и ниже порога пометки');
+      if(!Number.isInteger(body.greylist_delay)||body.greylist_delay<1||body.greylist_delay>60)throw new Error('Задержка greylisting: от 1 до 60 минут');
+    }
+    body.rbl_off=!v.rbl;
+    body.rbl_skip=cat.filter((x)=>!v['rbl_'+x.id]).map((x)=>x.id);
+    body.rbl_custom=String(v.rbl_custom||'').split('\n').map((l)=>l.trim()).filter(Boolean).map((l)=>{
+      const [zone,score]=l.split(/\s+/);const n=score===undefined?3:Number(String(score).replace(',','.'));
+      if(!zone||!(n>=0.1&&n<=20))throw new Error('Свои списки DNSBL: «адрес балл», балл от 0,1 до 20 — '+l);
+      return {zone,score:n};
+    });
+    const r=await api('mail.spam.setup',body);watchJob(r.job);
   }});
 }
 async function mailWebmailForm(data) {

@@ -23,7 +23,7 @@ func spamFiles(s SpamSettings) (map[string]string, error) {
 		return nil, errf("Повреждён пароль Redis антиспама")
 	}
 	redisBin, redisUser := spamRedisServer()
-	return map[string]string{
+	files := map[string]string{
 		"/etc/rspamd/local.d/worker-proxy.inc": `bind_socket = "127.0.0.1:11332";
 milter = yes;
 count = 1;
@@ -31,7 +31,7 @@ upstream "local" { self_scan = yes; }
 `,
 		"/etc/rspamd/local.d/worker-normal.inc":        "enabled = false;\n",
 		"/etc/rspamd/override.d/worker-controller.inc": fmt.Sprintf("bind_socket = \"127.0.0.1:11334\";\nsecure_ip = [];\npassword = \"%x\";\nenable_password = \"%x\";\n", sha256.Sum256([]byte("read:"+secret)), sha256.Sum256([]byte("write:"+secret))),
-		"/etc/rspamd/local.d/actions.conf":             fmt.Sprintf("reject = %d;\nadd_header = null;\nrewrite_subject = %d;\ngreylist = null;\nsubject = \"[SPAM] %%s\";\n", s.Reject, s.Mark),
+		"/etc/rspamd/local.d/actions.conf":             fmt.Sprintf("reject = %d;\nadd_header = null;\nrewrite_subject = %d;\ngreylist = %s;\nsubject = \"[SPAM] %%s\";\n", s.Reject, s.Mark, spamGreylistAction(s)),
 		"/etc/rspamd/local.d/milter_headers.conf": `use = ["x-spam-status", "x-spam-level", "authentication-results"];
 extended_spam_headers = true;
 skip_local = false;
@@ -73,7 +73,11 @@ ProtectHome=true
 [Install]
 WantedBy=multi-user.target
 `,
-	}, nil
+	}
+	for p, content := range spamExtraFiles(s) {
+		files[p] = content
+	}
+	return files, nil
 }
 func setupSpam(s SpamSettings, j *Job) (err error) {
 	mailSetupMu.Lock()

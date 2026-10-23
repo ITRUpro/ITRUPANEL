@@ -12,6 +12,20 @@ type SpamSettings struct {
 	Enabled   bool `json:"enabled"`
 	Mark      int  `json:"mark"`
 	Reject    int  `json:"reject"`
+	// Greylisting Rspamd: письмо от неизвестного отправителя со счётом от GreylistScore сначала получает
+	// временный отказ, повторная доставка через GreylistDelay минут проходит. Авторизованных и локальных не касается.
+	Greylist      bool `json:"greylist,omitempty"`
+	GreylistScore int  `json:"greylist_score,omitempty"`
+	GreylistDelay int  `json:"greylist_delay,omitempty"` // минуты, 0 — 5
+	// DNSBL: RBLOff выключает проверку целиком, RBLSkip — отдельные списки Rspamd, RBLCustom — свои.
+	RBLOff    bool        `json:"rbl_off,omitempty"`
+	RBLSkip   []string    `json:"rbl_skip,omitempty"`
+	RBLCustom []CustomRBL `json:"rbl_custom,omitempty"`
+}
+
+type CustomRBL struct {
+	Zone  string  `json:"zone"`
+	Score float64 `json:"score"`
 }
 type WebmailSettings struct {
 	Ready       bool   `json:"ready"`
@@ -63,6 +77,9 @@ func registerMailExtras() {
 		}
 		if in.Mark < 1 || in.Reject <= in.Mark || in.Reject > 100 {
 			return nil, errf("Порог пометки: от 1; порог отклонения должен быть больше, максимум 100")
+		}
+		if err := spamValidateExtras(&in); err != nil {
+			return nil, err
 		}
 		id := startJob("mail:extras", "Настройка антиспама Rspamd", q.S.User, func(j *Job) (any, error) {
 			return map[string]string{"info": "Антиспам настроен"}, setupSpam(in, j)

@@ -131,15 +131,41 @@ async function mailQuotaUsage(box) {
 }
 async function mailSpamForm(data) {
   const s = data.spam || {};
-  openForm({title: "Rspamd anti-spam", ok: s.installed ? "Apply" : "Install", fields: [
+  const en = typeof window !== 'undefined' && window.PanelLanguage?.language === 'en';
+  const cat = data.rbl_catalog || [];
+  const skip = new Set(s.rbl_skip || []);
+  const lists = cat.map((x) => ({ name: 'rbl_' + x.id, label: ((en && x.title_en) || x.title) + ' · ' + x.zone, type: 'checkbox', value: !skip.has(x.id), hint: (en && x.desc_en) || x.desc, show: (v) => v.rbl }));
+  openForm({title: "Rspamd anti-spam", ok: s.installed ? "Apply" : "Install", wide: true, fields: [
     {name:'enabled',label:"Filtering enabled",type:'checkbox',value:s.installed ? !!s.enabled : true},
     {name:'mark',label:"Spam tagging score",type:'number',value:s.mark || 6},
     {name:'reject',label:"Reject score",type:'number',value:s.reject || 15},
     {type:'html',html:"<p class=\"hint\">Suspicious messages receive check headers and a [SPAM] subject tag. Clear spam is rejected before delivery. The rejection threshold must exceed the tagging threshold. If the filter is unavailable, senders receive a temporary error to retry delivery. Automatic moving to Spam and antivirus attachment scanning are not included.</p>"},
+    {type:'section',label:"Greylisting"},
+    {name:'greylist',label:"Turn on greylisting",type:'checkbox',value:!!s.greylist,hint:"A message from an unknown sender with a spam score from the set threshold gets a temporary rejection; a real mail server retries the delivery after a few minutes, which spam bots usually cannot do. Authenticated users and local mail are not affected. The first message from a new sender arrives with a delay."},
+    {name:'greylist_score',label:"Delay messages from score",type:'number',value:s.greylist_score || 4,show:(v)=>v.greylist,hint:"Must be below the marking threshold. The lower the score, the more messages are delayed."},
+    {name:'greylist_delay',label:"After how many minutes to accept the retry",type:'number',value:s.greylist_delay || 5,show:(v)=>v.greylist},
+    {type:'section',label:"DNSBL blocklists"},
+    {name:'rbl',label:"Check senders against DNSBL lists",type:'checkbox',value:!s.rbl_off,hint:"Spamhaus and some other lists do not answer public DNS (8.8.8.8, 1.1.1.1): the queries are blocked and the message looks “clean”. The check needs the server's own resolver; the reputation check on the mail page shows whether DNSBL works."},
+    ...lists,
+    {name:'rbl_custom',label:"Your own DNSBL lists",type:'textarea',rows:3,value:(s.rbl_custom || []).map((c) => c.zone + ' ' + c.score).join('\n'),placeholder:'bl.example.net 3',show:(v)=>v.rbl,hint:"One per line: the list address and the score added to a message if the sender is on the list (0.1 to 20)."},
   ],submit:async v=>{
-    v.mark=Number(v.mark);v.reject=Number(v.reject);
-    if(!Number.isInteger(v.mark)||!Number.isInteger(v.reject)||v.mark<1||v.reject<=v.mark||v.reject>100)throw new Error("Use integer thresholds: 1 ≤ tagging < rejection ≤ 100");
-    const r=await api('mail.spam.setup',v);watchJob(r.job);
+    const mark=Number(v.mark),reject=Number(v.reject);
+    if(!Number.isInteger(mark)||!Number.isInteger(reject)||mark<1||reject<=mark||reject>100)throw new Error("Use integer thresholds: 1 ≤ tagging < rejection ≤ 100");
+    const body={installed:!!s.installed,enabled:!!v.enabled,mark,reject};
+    body.greylist=!!v.greylist;
+    if(body.greylist){
+      body.greylist_score=Number(v.greylist_score);body.greylist_delay=Number(v.greylist_delay);
+      if(!Number.isInteger(body.greylist_score)||body.greylist_score<1||body.greylist_score>=mark)throw new Error("Greylisting starts from a score of 1 and below the marking threshold");
+      if(!Number.isInteger(body.greylist_delay)||body.greylist_delay<1||body.greylist_delay>60)throw new Error("Greylisting delay: 1 to 60 minutes");
+    }
+    body.rbl_off=!v.rbl;
+    body.rbl_skip=cat.filter((x)=>!v['rbl_'+x.id]).map((x)=>x.id);
+    body.rbl_custom=String(v.rbl_custom||'').split('\n').map((l)=>l.trim()).filter(Boolean).map((l)=>{
+      const [zone,score]=l.split(/\s+/);const n=score===undefined?3:Number(String(score).replace(',','.'));
+      if(!zone||!(n>=0.1&&n<=20))throw new Error("Your own DNSBL lists: “address score”, score 0.1 to 20 — "+l);
+      return {zone,score:n};
+    });
+    const r=await api('mail.spam.setup',body);watchJob(r.job);
   }});
 }
 async function mailWebmailForm(data) {

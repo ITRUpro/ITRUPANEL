@@ -1247,5 +1247,12 @@
   "Шаблон не найден": "Template not found",
   "Шаблон «%s» и свои правила сайта оба задают location /. Уберите один из них": "Template “%s” and the site's own rules both define location /. Remove one of them",
   "Шаблон сайта: сохранение": "Site template: save",
-  "Шаблон сайта: удаление": "Site template: delete"
+  "Шаблон сайта: удаление": "Site template: delete",
+  "Задержка greylisting: от 1 до 60 минут": "Greylisting delay: 1 to 60 minutes",
+  "Greylisting включается с балла от 1 и ниже порога пометки (%d)": "Greylisting starts from a score of 1 and below the marking threshold (%d)",
+  "Неизвестный список DNSBL: %s": "Unknown DNSBL list: %s",
+  "Не больше 10 своих списков DNSBL": "No more than 10 DNSBL lists of your own",
+  "Неверное имя списка DNSBL: %s": "Invalid DNSBL list name: %s",
+  "Список %s уже проверяется или добавлен": "The list %s is already checked or added",
+  "Балл списка %s: от 0,1 до 20": "Score of list %s: 0.1 to 20"
 }
