@@ -510,3 +510,11 @@ pre.out.code { font: 12.5px/1.55 var(--mono); word-break: break-all; }
 
 .backup-crumb { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
 .backup-crumb[hidden] { display: none; }
+
+.dl-progress { position: fixed; right: 24px; bottom: 24px; z-index: 85; width: min(420px, calc(100vw - 32px)); background: var(--card); color: var(--text); border: 1px solid var(--line, var(--hover)); border-radius: 14px; box-shadow: var(--shadow); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.dl-progress .dl-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dl-progress .dl-bar { height: 8px; border-radius: 99px; background: var(--hover); overflow: hidden; }
+.dl-progress .dl-bar i { display: block; height: 100%; width: 3%; border-radius: 99px; background: var(--accent); transition: width .6s ease; }
+.dl-progress .dl-bar.busy i { animation: dl-slide 1.4s ease-in-out infinite; }
+.dl-progress .dl-text { font-size: 13px; }
+@keyframes dl-slide { 0%, 100% { opacity: .45 } 50% { opacity: 1 } }

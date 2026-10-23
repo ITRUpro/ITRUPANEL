@@ -23,6 +23,7 @@ type Job struct {
 	Title   string    `json:"title"`
 	Status  string    `json:"status"`
 	Stage   string    `json:"stage"`
+	Percent int       `json:"percent,omitempty"` // 0 — ход неизвестен
 	Log     string    `json:"log"`
 	Error   string    `json:"error,omitempty"`
 	Result  any       `json:"result,omitempty"`
@@ -193,6 +194,24 @@ func liveCommand(j *Job, limit time.Duration, name string, args ...string) error
 	}
 	return nil
 }
+
+// jobPercent сообщает ход задачи в процентах (1–100); для интерфейса, который показывает полосу и остаток времени.
+func jobPercent(j *Job, pct int) {
+	if j == nil {
+		return
+	}
+	if pct < 1 {
+		pct = 1
+	}
+	if pct > 100 {
+		pct = 100
+	}
+	jobsMu.Lock()
+	j.Percent = pct
+	j.Updated = time.Now()
+	jobsMu.Unlock()
+}
+
 func jobStage(j *Job, s string) {
 	if j != nil {
 		j.progress(s)

@@ -310,7 +310,17 @@ func assembleBackup(j *Job, b *Backup) (string, error) {
 	}
 	for i, part := range chain {
 		jobStage(j, fmt.Sprintf("Распаковка архива: часть %d из %d", i+1, len(chain)))
-		if err = unpackBackupPart(part, P(tmp)); err != nil {
+		i, n := i, len(chain)
+		last := -1
+		// Распаковка занимает почти всё время: 1–90 %, остальное — упаковка выбранного.
+		report := func(done, total int64) {
+			pct := int((float64(i) + float64(done)/float64(total)) / float64(n) * 90)
+			if pct != last {
+				last = pct
+				jobPercent(j, pct)
+			}
+		}
+		if err = unpackBackupPartProgress(part, P(tmp), report); err != nil {
 			os.RemoveAll(P(tmp))
 			return "", err
 		}
@@ -354,6 +364,7 @@ func extractBackupItems(j *Job, id string, rels, dbs []string) (string, error) {
 		return "", err
 	}
 	jobStage(j, "Подготовка файла для скачивания")
+	jobPercent(j, 92)
 	type item struct{ src, name string }
 	var items []item
 	for _, rel := range rels {

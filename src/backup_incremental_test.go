@@ -94,8 +94,17 @@ func TestIncrementalArchiveRestoresChangedNewDeletedAndLinks(t *testing.T) {
 	}
 	dest := t.TempDir()
 	for _, b := range chain {
-		if err := unpackBackupPart(b, dest); err != nil {
+		var last, total int64
+		if err := unpackBackupPartProgress(b, dest, func(done, all int64) {
+			if done < last || done > all {
+				t.Errorf("ход распаковки идёт назад или выходит за размер: %d после %d из %d", done, last, all)
+			}
+			last, total = done, all
+		}); err != nil {
 			t.Fatal(err)
+		}
+		if total == 0 || last == 0 {
+			t.Fatal("ход распаковки не сообщался")
 		}
 	}
 	for name, want := range map[string]string{"unchanged.txt": "same", "changed.txt": "after", "new/nested.txt": "new"} {

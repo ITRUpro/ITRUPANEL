@@ -1,5 +1,4 @@
 [
-  "PHP: the version list has a new Release column showing the exact release installed on the server (for example 8.3.36).",
-  "Websites: the version of the web server (nginx, Apache, OpenLiteSpeed) is shown next to its name; Apache and OpenLiteSpeed versions are also in the server information.",
+  "Backups: when you download a selected folder, files or a database, a progress bar with the percentage and the estimated time left is shown in the corner; the preparation can be stopped.",
   "Minor bug fixes."
 ]

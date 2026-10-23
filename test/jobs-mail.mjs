@@ -75,29 +75,35 @@ test('new mailbox picks selected domain default quota',async()=>{
  await form.submit({local:'info',domain:'one.test',limit:false,quota:5,unit:'GB',enabled:true});assert.equal(sent.quota_mb,0);
 });
 
-// Скачивание подготовленного файла (база или выбранное из копии) идёт без окна задачи.
+// Скачивание подготовленного файла (база или выбранное из копии) идёт без окна задачи: в углу — полоса хода.
 function downloadHarness(lang, answer) {
-  const out = { toasts: [], fails: [], modals: 0, href: null };
+  const out = { toasts: [], fails: [], modals: 0, href: null, boxes: 0, removed: 0, texts: [], widths: [] };
+  const els = {};
+  const el = (k) => (els[k] ||= { style: {}, parentElement: { classList: { toggle() {} } }, set innerHTML(v) { out.texts.push(v); }, set textContent(v) { out.texts.push(v); } });
   const c = vm.createContext({
-    page() {}, $() {}, confirmBox() {}, route() {}, setTimeout, Date,
+    page() {}, h: (x) => String(x), $: (sel) => el(sel), confirmBox() {}, route() {}, setTimeout, Date,
     toast: (m) => out.toasts.push(m), fail: (e) => out.fails.push(e.message), modal: () => { out.modals++; return { el: {}, close() {} }; },
     api: async () => answer(), location: { set href(v) { out.href = v; } },
+    document: { createElement: () => ({ set className(v) {}, set innerHTML(v) {}, remove() { out.removed++; } }), body: { append() { out.boxes++; } } },
   });
   vm.runInContext(fs.readFileSync(new URL('../src/web/' + lang + 'jobs.js', import.meta.url), 'utf8'), c);
-  return { c, out };
+  return { c, out, el };
 }
 for (const lang of ['', 'en/']) {
-  test('download job: no dialog window, the file starts as soon as it is ready ' + lang, async () => {
+  test('download job: no dialog window, progress in the corner, the file starts as soon as it is ready ' + lang, async () => {
     let status = 'running';
-    const { c, out } = downloadHarness(lang, () => status === 'running' ? { status } : { status, result: { download: '/api/backups/extracted?f=x.sql.gz' } });
+    const { c, out, el } = downloadHarness(lang, () => status === 'running' ? { status, percent: 40, stage: 'Распаковка архива: часть 1 из 2' } : { status, result: { download: '/api/backups/extracted?f=x.sql.gz' } });
     c.waitJobDownload('job1');
     await new Promise((r) => setTimeout(r, 50));
     assert.equal(out.modals, 0, 'окно задачи не открывается');
-    assert.equal(out.toasts.length, 1);
+    assert.equal(out.boxes, 1, 'в углу показана полоса хода');
+    assert.equal(el('i').style.width, '40%');
+    assert.ok(out.texts.some((t) => String(t).includes('40%')), 'проценты показаны');
     assert.equal(out.href, null, 'пока файл не готов, скачивание не запускается');
     status = 'done';
     await new Promise((r) => setTimeout(r, 1300));
     assert.equal(out.href, '/api/backups/extracted?f=x.sql.gz', 'скачивание запущено сразу');
+    assert.equal(out.removed, 1, 'полоса убрана');
     assert.equal(out.fails.length, 0);
   });
   test('download job: an error is a message, not a window ' + lang, async () => {
@@ -106,6 +112,7 @@ for (const lang of ['', 'en/']) {
     await new Promise((r) => setTimeout(r, 100));
     assert.deepEqual(out.fails, ['нет места']);
     assert.equal(out.modals, 0);
+    assert.equal(out.removed, 1);
     assert.equal(out.href, null);
   });
 }

@@ -2,6 +2,11 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.12
+
+- **Backups**: while a selected folder, files or a database are being prepared for download, a progress bar with the percentage and the estimated time left is shown in the corner of the screen (before, nothing was visible for minutes); the preparation can be stopped
+- installer: the pre-installation check list is aligned by characters even when the Russian locale is not installed on the server
+
 ## 0.2.11
 
 - **PHP**: the version list has a new **Release** column showing the exact release installed on the server (for example 8.3.36)

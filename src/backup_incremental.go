@@ -356,7 +356,26 @@ func ensureBackupParents(root, relative string) error {
 	}
 	return nil
 }
-func unpackBackupPart(b *Backup, dest string) error {
+func unpackBackupPart(b *Backup, dest string) error { return unpackBackupPartProgress(b, dest, nil) }
+
+// countingReader считает прочитанные байты сжатого архива: по ним видно, какая часть копии уже распакована.
+type countingReader struct {
+	r    io.Reader
+	n    int64
+	done func(n int64)
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += int64(n)
+	if c.done != nil && n > 0 {
+		c.done(c.n)
+	}
+	return n, err
+}
+
+// unpackBackupPartProgress — unpackBackupPart с отчётом о ходе: progress(прочитано, всего) в байтах архива.
+func unpackBackupPartProgress(b *Backup, dest string, progress func(done, total int64)) error {
 	file, temporary, err := fetchBackup(b)
 	if err != nil {
 		return err
@@ -369,7 +388,14 @@ func unpackBackupPart(b *Backup, dest string) error {
 		return err
 	}
 	defer f.Close()
-	gz, err := gzip.NewReader(f)
+	var src io.Reader = f
+	if progress != nil {
+		if st, err := f.Stat(); err == nil && st.Size() > 0 {
+			total := st.Size()
+			src = &countingReader{r: f, done: func(n int64) { progress(n, total) }}
+		}
+	}
+	gz, err := gzip.NewReader(src)
 	if err != nil {
 		return err
 	}

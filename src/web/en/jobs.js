@@ -39,23 +39,40 @@ function watchJob(id, { onComplete } = {}) {
   poll();
 }
 
-// waitJobDownload ждёт задачу подготовки файла без окна и сразу запускает скачивание, когда файл готов.
-// Ход виден только во всплывающем сообщении; ошибка показывается обычным сообщением.
+// waitJobDownload ждёт задачу подготовки файла без окна задач: в углу показывается полоса хода с процентами и
+// оценкой оставшегося времени, а скачивание начинается само, когда файл готов.
 function waitJobDownload(id) {
-  toast("Preparing the file for download…", 'ok');
+  const box = document.createElement('div');
+  box.className = 'dl-progress';
+  box.innerHTML = `<div class="dl-head"><b>Preparing the file for download</b><button class="btn small" data-stop>Stop</button></div><div class="dl-bar"><i></i></div><div class="dl-text muted"></div>`;
+  document.body.append(box);
+  const bar = $('i', box), text = $('.dl-text', box), stop = $('[data-stop]', box);
+  stop.onclick = async () => { stop.disabled = true; try { await api('jobs.cancel', { id }); } catch (e) { fail(e); stop.disabled = false; } };
   const started = Date.now();
+  const left = (sec) => (sec < 60 ? "less than a minute" : sec < 3600 ? "about " + Math.ceil(sec / 60) + " min" : "about " + Math.round(sec / 360) / 10 + " h");
+  const done = () => box.remove();
   const poll = async () => {
     let again = true;
     try {
       const j = await api('jobs.get', { id }, { timeout: 15000 });
       again = j.status === 'running';
-      if (!again) {
+      if (again) {
+        const pct = j.percent || 0, spent = (Date.now() - started) / 1000;
+        bar.style.width = (pct || 3) + '%';
+        bar.parentElement.classList.toggle('busy', !pct);
+        let t = h(j.stage || "Preparing…");
+        if (pct) t += ` · ${pct}%`;
+        if (pct >= 3 && spent >= 5) t += ` · remaining ${left(spent / pct * (100 - pct))}`;
+        else if (spent >= 60) t += " · the backup is large, preparing can take several minutes";
+        text.innerHTML = t;
+      } else {
+        done();
         if (j.status === 'done' && j.result && j.result.download) { location.href = j.result.download; return; }
         fail(new Error(j.error || "Could not prepare the file"));
         return;
       }
     } catch (e) { /* сеть моргнула: повторяем запрос */ }
-    if (again && Date.now() - started < 6 * 3600 * 1000) setTimeout(poll, 1000);
+    if (again && Date.now() - started < 6 * 3600 * 1000) setTimeout(poll, 1000); else if (again) done();
   };
   poll();
 }
