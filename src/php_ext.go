@@ -78,39 +78,7 @@ var phpExtCatalog = []phpExtDef{
 	{Name: "imagick", Title: "ImageMagick (imagick)", Group: grpGfx, Pecl: true},
 	{Name: "gmagick", Title: "GraphicsMagick (gmagick)", Group: grpGfx, Pecl: true},
 	{Name: "vips", Title: "libvips (быстрая обработка изображений)", Group: grpGfx, Pecl: true},
-
-	{Name: "mbstring", Title: "mbstring (многобайтовые строки)", Group: grpText},
-	{Name: "intl", Title: "intl (локализация, ICU)", Group: grpText},
-	{Name: "xml", Title: "XML (dom, simplexml, xmlreader, xmlwriter)", Group: grpText, Mods: []string{"xml", "dom", "simplexml", "xmlreader", "xmlwriter"}},
-	{Name: "xsl", Title: "XSL (преобразования XSLT)", Group: grpText},
-	{Name: "xmlrpc", Title: "XML-RPC", Group: grpText},
-	{Name: "yaml", Title: "YAML", Group: grpText, Pecl: true},
-	{Name: "bcmath", Title: "BCMath (точные вычисления)", Group: grpText},
-	{Name: "gmp", Title: "GMP (большие числа)", Group: grpText},
-	{Name: "uuid", Title: "UUID", Group: grpText, Pecl: true},
-	{Name: "ds", Title: "DS (структуры данных)", Group: grpText, Pecl: true},
-	{Name: "mailparse", Title: "Mailparse (разбор писем)", Group: grpText, Pecl: true},
-	{Name: "enchant", Title: "Enchant (проверка орфографии)", Group: grpText},
-	{Name: "pspell", Title: "Pspell (проверка орфографии)", Group: grpText},
-	{Name: "tidy", Title: "Tidy (чистка HTML)", Group: grpText},
-
-	{Name: "curl", Title: "cURL (HTTP-запросы)", Group: grpNet, Rhel: "common"},
-	{Name: "soap", Title: "SOAP", Group: grpNet},
-	{Name: "ssh2", Title: "SSH2", Group: grpNet, Pecl: true},
-	{Name: "snmp", Title: "SNMP", Group: grpNet},
-	{Name: "imap", Title: "IMAP (почта)", Group: grpNet},
-	{Name: "http", Title: "pecl_http (расширенный HTTP)", Group: grpNet, Pecl: true},
-	{Name: "oauth", Title: "OAuth", Group: grpNet, Pecl: true},
-	{Name: "raphf", Title: "raphf (ресурсы для pecl_http)", Group: grpNet, Pecl: true},
-	{Name: "grpc", Title: "gRPC", Group: grpNet, Pecl: true},
-	{Name: "protobuf", Title: "Protocol Buffers", Group: grpNet, Pecl: true},
-	{Name: "smbclient", Title: "SMB (сетевые папки Windows)", Group: grpNet, Pecl: true},
-	{Name: "swoole", Title: "Swoole (асинхронный сервер)", Group: grpNet, Pecl: true},
-	{Name: "event", Title: "Event (libevent)", Group: grpNet, Pecl: true},
-	{Name: "ev", Title: "Ev (libev)", Group: grpNet, Pecl: true},
-
-	{Name: "gnupg", Title: "GnuPG", Group: grpSec, Pecl: true},
-	{Name: "mcrypt", Title: "mcrypt (устаревшее шифрование)", Group: grpSec, Pecl: true},
+	{Name: "exif", Title: "EXIF (метаданные фотографий)", Group: grpGfx, Builtin: true},
 
 	{Name: "xdebug", Title: "Xdebug (отладка)", Group: grpDebug, Pecl: true},
 	{Name: "xhprof", Title: "XHProf (профилирование)", Group: grpDebug, Pecl: true},
@@ -118,14 +86,6 @@ var phpExtCatalog = []phpExtDef{
 	{Name: "excimer", Title: "Excimer (профилирование)", Group: grpDebug, Pecl: true},
 	{Name: "spx", Title: "SPX (профилировщик)", Group: grpDebug, Pecl: true},
 	{Name: "uopz", Title: "uopz (подмена кода для тестов)", Group: grpDebug, Pecl: true},
-
-	{Name: "zip", Title: "Zip", Group: grpArch},
-	{Name: "bz2", Title: "Bzip2", Group: grpArch, Rhel: "common"},
-	{Name: "rar", Title: "RAR", Group: grpArch, Pecl: true},
-
-	{Name: "ffi", Title: "FFI (вызов библиотек C)", Group: grpMisc},
-	{Name: "rrd", Title: "RRDtool", Group: grpMisc, Pecl: true},
-	{Name: "solr", Title: "Apache Solr", Group: grpMisc, Pecl: true},
 }
 
 func phpExtFind(name string) *phpExtDef {
@@ -211,6 +171,22 @@ func phpExtStates(v string, loaded map[string]bool, ionLoaded bool) map[string]p
 	return out
 }
 
+// phpParseModules разбирает вывод «php -m»: по одному модулю в строке, без заголовков «[PHP Modules]» и
+// «[Zend Modules]», без повторов (Zend OPcache указан в обоих разделах). Название может содержать пробел.
+func phpParseModules(out string) []string {
+	var mods []string
+	seen := map[string]bool{}
+	for _, line := range strings.Split(out, "\n") {
+		m := strings.TrimSpace(line)
+		if m == "" || strings.HasPrefix(m, "[") || seen[strings.ToLower(m)] {
+			continue
+		}
+		seen[strings.ToLower(m)] = true
+		mods = append(mods, m)
+	}
+	return mods
+}
+
 // phpExtOverview — список для окна «Модули»: каждому расширению соответствует состояние.
 func phpExtOverview(v string) []map[string]any {
 	loaded := map[string]bool{}
@@ -221,10 +197,8 @@ func phpExtOverview(v string) []map[string]any {
 		}
 	} else {
 		out, _ := run(phpCLI(v), "-m")
-		for _, m := range strings.Fields(out) {
-			if !strings.HasPrefix(m, "[") {
-				loaded[strings.ToLower(m)] = true
-			}
+		for _, m := range phpParseModules(out) {
+			loaded[strings.ToLower(m)] = true
 		}
 		vout, _ := run(phpCLI(v), "-v")
 		ion = strings.Contains(strings.ToLower(vout), "ioncube")

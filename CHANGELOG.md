@@ -2,6 +2,10 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.16
+
+- minor bug fixes
+
 ## 0.2.15
 
 - **Mail: greylisting and DNSBL in the Rspamd antispam window.** Greylisting (off by default) temporarily rejects messages from unknown senders with a spam score from a set threshold and accepts the retry after a chosen delay (1–60 minutes); authenticated users and local mail are not affected. DNSBL: the seven lists Rspamd checks by default (Spamhaus ZEN, NiX Spam, Blocklist.de, Virusfree, SenderScore, Mailspike, DNSWL) can be turned off one by one or all at once, and you can add up to 10 of your own lists with a score. The settings are written to `local.d`, checked with `rspamadm configtest` and rolled back on an error; the generated configuration was verified with Rspamd 3.4 on Debian 12

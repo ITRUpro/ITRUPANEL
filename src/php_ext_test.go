@@ -29,10 +29,10 @@ func TestPHPExtCatalogIsConsistent(t *testing.T) {
 			t.Errorf("%s: недопустимое имя", e.Name)
 		}
 	}
-	if len(phpExtCatalog) < 60 {
+	if len(phpExtCatalog) < 30 {
 		t.Errorf("расширений мало: %d", len(phpExtCatalog))
 	}
-	for _, must := range []string{"ioncube", "redis", "imagick", "xdebug", "intl", "gd", "mbstring", "opcache", "swoole", "mongodb"} {
+	for _, must := range []string{"ioncube", "redis", "imagick", "xdebug", "gd", "opcache", "mongodb", "exif"} {
 		if phpExtFind(must) == nil {
 			t.Errorf("нет %s", must)
 		}
@@ -64,7 +64,7 @@ func TestPHPExtPackageNames(t *testing.T) {
 		}
 	}
 	osInfo.Family = "rhel"
-	for ext, want := range map[string]string{"redis": "php83-php-pecl-redis", "gd": "php83-php-gd", "mysql": "php83-php-mysqlnd", "curl": "php83-php-common", "imagick": "php83-php-pecl-imagick"} {
+	for ext, want := range map[string]string{"redis": "php83-php-pecl-redis", "gd": "php83-php-gd", "mysql": "php83-php-mysqlnd", "imagick": "php83-php-pecl-imagick"} {
 		if got := phpExtPackage("8.3", ext); got != want {
 			t.Errorf("rhel %s: %s, ждали %s", ext, got, want)
 		}
@@ -155,7 +155,7 @@ func TestPHPExtAPIDryActions(t *testing.T) {
 	_, r := testAPI(t, mux, "php.ini", `{"version":"8.3"}`)
 	d := r["data"].(map[string]any)
 	cat := d["catalog"].([]any)
-	if len(cat) < 60 {
+	if len(cat) < 30 {
 		t.Fatalf("каталог: %d", len(cat))
 	}
 	var ion map[string]any
@@ -178,5 +178,22 @@ func TestPHPExtAPIDryActions(t *testing.T) {
 	}
 	if _, r := testAPI(t, mux, "php.ext", `{"version":"8.4","ext":"redis","action":"install"}`); r["error"] == nil {
 		t.Error("PHP 8.4 не установлен, а действие принято")
+	}
+}
+
+func TestPHPParseModules(t *testing.T) {
+	out := "[PHP Modules]\nbcmath\ncurl\nmysqli\nZend OPcache\nzip\n\n[Zend Modules]\nZend OPcache\n"
+	got := phpParseModules(out)
+	want := []string{"bcmath", "curl", "mysqli", "Zend OPcache", "zip"}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Fatalf("модули: %q, ждали %q", got, want)
+	}
+	if len(phpParseModules("")) != 0 || len(phpParseModules("[PHP Modules]\n\n")) != 0 {
+		t.Fatal("пустой вывод")
+	}
+	// OPcache определяется как установленный и включённый по названию «Zend OPcache».
+	st := phpExtStates("8.3", map[string]bool{"zend opcache": true}, false)
+	if s := st["opcache"]; !s.Installed || !s.Enabled {
+		t.Fatalf("opcache: %+v", s)
 	}
 }

@@ -1,4 +1,3 @@
 [
-  "Mail: greylisting and DNSBL (blocklists) controls in the Rspamd antispam window — turn on, threshold and delay of greylisting, choice of DNSBL lists and your own lists with a score.",
   "Minor bug fixes."
 ]

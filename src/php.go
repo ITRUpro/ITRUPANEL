@@ -434,7 +434,7 @@ func registerPHP() {
 		if !cfg.Dry {
 			mods, _ = run(phpCLI(in.Version), "-m")
 		}
-		return map[string]any{"values": readIni(in.Version), "keys": phpIniKeys, "modules": strings.Fields(mods), "ini": phpIni(in.Version), "extras": phpExtNames(), "catalog": phpExtOverview(in.Version)}, nil
+		return map[string]any{"values": readIni(in.Version), "keys": phpIniKeys, "modules": phpParseModules(mods), "ini": phpIni(in.Version), "extras": phpExtNames(), "catalog": phpExtOverview(in.Version)}, nil
 	})
 	apiOp("php.ext", "PHP: модуль", func(q *Req) (any, error) {
 		var in struct {
