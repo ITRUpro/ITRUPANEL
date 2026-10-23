@@ -248,6 +248,7 @@ async function siteForm(edit) {
         hint: 'Apache поддерживает .htaccess; OpenLiteSpeed — правила Rewrite в .htaccess. Во всех режимах PHP работает через PHP-FPM. OpenLiteSpeed устанавливается при первом выборе. После изменения .htaccess перезапустите OpenLiteSpeed в разделе «Информация о сервере».' },
       { name: 'php', label: 'Версия PHP', type: 'select', options: php, value: s.php || meta.default_php || '8.3', show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode), hint: 'Если версия не установлена, панель установит её при сохранении (2–5 минут). <a href="#/php">Все версии PHP</a>' },
       { name: 'try_index', label: 'Все запросы на index.php (ЧПУ)', type: 'checkbox', value: s.try_index ?? true, show: (v) => v.mode === 'php', hint: 'Нужно для Laravel, X3 и большинства CMS. В режиме Apache это делает .htaccess.' },
+      { name: 'template', label: 'Шаблон сайта', type: 'select', options: (meta.templates || []).map((t) => [t.id, (window.PanelLanguage?.language === 'en' && t.name_en) || t.name]), value: s.template || '', hint: 'Готовый набор правил nginx под тип сайта (WordPress, Laravel, Joomla, SPA…). Свои шаблоны и описания — кнопка «Шаблоны» на странице сайтов.' },
       { name: 'proxy_to', label: 'Адрес приложения', value: s.proxy_to || '', placeholder: 'http://127.0.0.1:3000', show: (v) => v.mode === 'proxy' },
       { type: 'section', label: 'SSL' },
       { name: 'create_zone', label: 'Создать DNS-зону для домена', type: 'checkbox', value: false, show: () => isNew, hint: 'Для поддомена существующей зоны A-записи добавятся автоматически' },
@@ -293,7 +294,7 @@ async function defaultSiteForm() {
 page('sites', {
   title: 'Сайты',
   async render(view, params) {
-    head(view, 'Сайты', { actions: [{ t: 'Создать сайт', i: 'plus', primary: true, fn: () => siteForm() }, { t: 'Сайт по умолчанию', i: 'globe', fn: () => defaultSiteForm() }, { t: 'Задачи', i: 'clock', fn: () => go('jobs') }] });
+    head(view, 'Сайты', { actions: [{ t: 'Создать сайт', i: 'plus', primary: true, fn: () => siteForm() }, { t: 'Сайт по умолчанию', i: 'globe', fn: () => defaultSiteForm() }, { t: 'Шаблоны', i: 'file', fn: () => siteTemplates() }, { t: 'Задачи', i: 'clock', fn: () => go('jobs') }] });
     const p = panel(view);
     const [rows, def] = await Promise.all([api('sites.list'), api('sites.default').catch(() => ({}))]);
     table(p, {
@@ -324,6 +325,47 @@ page('sites', {
   },
 });
 window.siteForm = siteForm;
+
+// Шаблоны сайтов: готовые и свои наборы правил nginx.
+async function siteTemplates() {
+  const d = await api('site.templates.list');
+  const en = window.PanelLanguage?.language === 'en';
+  const name = (x) => (en && x.name_en) || x.name, desc = (x) => (en && x.desc_en) || x.desc;
+  const m = modal(`<h3>Шаблоны сайтов</h3><p class="muted">Шаблон — готовый набор правил nginx под тип сайта. Основу (порты, SSL, защиту, PHP, закрытые служебные файлы) панель оставляет за собой, шаблон только добавляет правила. Встроенные шаблоны изменить нельзя, но их можно скопировать как свои. В правилах можно использовать переменные: ${d.vars.map((v) => '<code>' + h(v) + '</code>').join(' ')}.</p><div data-t></div><div class="btns"><button class="btn primary" data-new>Создать шаблон</button><button class="btn" data-close>Закрыть</button></div>`, { wide: true });
+  const edit = (x, copy) => openForm({
+    title: x && !copy ? 'Шаблон: ' + name(x) : 'Новый шаблон', ok: 'Сохранить', wide: true,
+    fields: [
+      { name: 'name', label: 'Название', value: x ? (copy ? name(x) + ' (копия)' : name(x)) : '', required: true },
+      { name: 'desc', label: 'Описание', value: x ? desc(x) : '', hint: 'Коротко: для какого сайта шаблон.' },
+      { name: 'rules', label: 'Правила nginx (вставляются внутрь server {})', type: 'textarea', rows: 14, value: x ? x.rules : '    location / { try_files $uri $uri/ /index.php?$args; }\n', hint: 'Если в шаблоне есть location /, он заменяет стандартный блок панели. Обработчик PHP, проверка Let’s Encrypt и закрытие служебных файлов остаются у панели. Перед применением nginx проверяет настройки; при ошибке всё возвращается как было.' },
+    ],
+    submit: async (v) => { const r = await api('site.templates.save', { id: x && !copy ? x.id : '', name: v.name, desc: v.desc, rules: v.rules }); toast(r.sites ? 'Сохранено, обновлено сайтов: ' + r.sites : 'Сохранено', 'ok'); m.close(); siteTemplates(); },
+  });
+  const preview = async (x) => {
+    const sites = await api('sites.list');
+    if (!sites.length) { toast('Сначала создайте сайт', 'err'); return; }
+    openForm({
+      title: 'Как выглядит на сайте', ok: 'Показать', wide: true,
+      fields: [{ name: 'domain', label: 'Сайт', type: 'select', options: sites.map((r) => [r.site.domain, r.unicode]), value: sites[0].site.domain }],
+      submit: async (v) => { const r = await api('site.templates.preview', { domain: v.domain, id: x.id, rules: x.rules }); const w = modal(`<h3>${h(name(x))} · ${h(v.domain)}</h3><pre class="out code" style="max-height:60vh;overflow:auto">${h(r.config)}</pre><div class="btns"><button class="btn primary" data-close>Закрыть</button></div>`, { wide: true }); },
+    });
+  };
+  table($('[data-t]', m.el), {
+    rows: d.templates,
+    columns: [
+      { t: 'Название', r: (x) => `<b>${h(name(x))}</b> ${x.builtin ? '<span class="tag">встроенный</span>' : ''}<br><small class="muted">${h(desc(x))}</small>` },
+      { t: 'Сайтов', r: (x) => x.sites || '—', cls: 'nowrap' },
+    ],
+    actions: (x) => [
+      x.rules && { i: 'search', t: 'Как выглядит на сайте', fn: () => preview(x) },
+      x.rules && { i: 'copy', t: 'Копировать как свой', fn: () => edit(x, true) },
+      !x.builtin && { i: 'edit', t: 'Изменить', fn: () => edit(x, false) },
+      !x.builtin && { i: 'trash', t: 'Удалить', danger: true, fn: async () => { if (!(await confirmBox('Удалить шаблон?', h(name(x)) + ' будет удалён.'))) return; try { await api('site.templates.delete', { id: x.id }); m.close(); siteTemplates(); } catch (e) { fail(e); } } },
+    ],
+  });
+  $('[data-new]', m.el).onclick = () => edit(null, false);
+}
+window.siteTemplates = siteTemplates;
 
 async function nginxCustom(domain) {
   const d = await api('sites.get', { domain });

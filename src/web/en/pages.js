@@ -248,6 +248,7 @@ async function siteForm(edit) {
         hint: "Apache supports .htaccess; OpenLiteSpeed supports Rewrite rules in .htaccess. All modes use PHP-FPM. OpenLiteSpeed is installed when first selected. After editing .htaccess, restart OpenLiteSpeed in Server information." },
       { name: 'php', label: "PHP version", type: 'select', options: php, value: s.php || meta.default_php || '8.3', show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode), hint: "If this version is not installed, the panel installs it on save (2–5 minutes). <a href=\"#/php\">All PHP versions</a>" },
       { name: 'try_index', label: "Route all requests to index.php (friendly URLs)", type: 'checkbox', value: s.try_index ?? true, show: (v) => v.mode === 'php', hint: "Required for Laravel, X3 and most CMS platforms. Apache mode uses .htaccess for this." },
+      { name: 'template', label: "Site template", type: 'select', options: (meta.templates || []).map((t) => [t.id, (window.PanelLanguage?.language === 'en' && t.name_en) || t.name]), value: s.template || '', hint: "A ready set of nginx rules for a type of site (WordPress, Laravel, Joomla, SPA…). Your own templates and their descriptions: the Templates button on the sites page." },
       { name: 'proxy_to', label: "Application address", value: s.proxy_to || '', placeholder: 'http://127.0.0.1:3000', show: (v) => v.mode === 'proxy' },
       { type: 'section', label: 'SSL' },
       { name: 'create_zone', label: "Create DNS zone for domain", type: 'checkbox', value: false, show: () => isNew, hint: "A records for a subdomain of an existing zone are added automatically" },
@@ -293,7 +294,7 @@ async function defaultSiteForm() {
 page('sites', {
   title: "Sites",
   async render(view, params) {
-    head(view, "Sites", { actions: [{ t: "Create site", i: 'plus', primary: true, fn: () => siteForm() }, { t: "Default website", i: 'globe', fn: () => defaultSiteForm() }, { t: "Tasks", i: 'clock', fn: () => go('jobs') }] });
+    head(view, "Sites", { actions: [{ t: "Create site", i: 'plus', primary: true, fn: () => siteForm() }, { t: "Default website", i: 'globe', fn: () => defaultSiteForm() }, { t: "Templates", i: 'file', fn: () => siteTemplates() }, { t: "Tasks", i: 'clock', fn: () => go('jobs') }] });
     const p = panel(view);
     const [rows, def] = await Promise.all([api('sites.list'), api('sites.default').catch(() => ({}))]);
     table(p, {
@@ -324,6 +325,47 @@ page('sites', {
   },
 });
 window.siteForm = siteForm;
+
+// Шаблоны сайтов: готовые и свои наборы правил nginx.
+async function siteTemplates() {
+  const d = await api('site.templates.list');
+  const en = window.PanelLanguage?.language === 'en';
+  const name = (x) => (en && x.name_en) || x.name, desc = (x) => (en && x.desc_en) || x.desc;
+  const m = modal(`<h3>Site templates</h3><p class="muted">A template is a ready set of nginx rules for a type of site. The panel keeps the base (ports, SSL, protection, PHP, closed service files) and the template only adds rules. Built-in templates cannot be changed, but you can copy them as your own. You can use these variables in the rules: ${d.vars.map((v) => '<code>' + h(v) + '</code>').join(' ')}.</p><div data-t></div><div class="btns"><button class="btn primary" data-new>Create a template</button><button class="btn" data-close>Close</button></div>`, { wide: true });
+  const edit = (x, copy) => openForm({
+    title: x && !copy ? "Template: " + name(x) : "New template", ok: "Save", wide: true,
+    fields: [
+      { name: 'name', label: "Name", value: x ? (copy ? name(x) + " (copy)" : name(x)) : '', required: true },
+      { name: 'desc', label: "Description", value: x ? desc(x) : '', hint: "Briefly: what kind of site the template is for." },
+      { name: 'rules', label: "nginx rules (inserted inside server {})", type: 'textarea', rows: 14, value: x ? x.rules : '    location / { try_files $uri $uri/ /index.php?$args; }\n', hint: "If the template has location /, it replaces the standard panel block. The PHP handler, the Let’s Encrypt check and the closing of service files stay with the panel. nginx checks the settings before applying; on an error everything is restored as it was." },
+    ],
+    submit: async (v) => { const r = await api('site.templates.save', { id: x && !copy ? x.id : '', name: v.name, desc: v.desc, rules: v.rules }); toast(r.sites ? "Saved, sites updated: " + r.sites : "Saved", 'ok'); m.close(); siteTemplates(); },
+  });
+  const preview = async (x) => {
+    const sites = await api('sites.list');
+    if (!sites.length) { toast("Create a site first", 'err'); return; }
+    openForm({
+      title: "How it looks on a site", ok: "Show", wide: true,
+      fields: [{ name: 'domain', label: "Site", type: 'select', options: sites.map((r) => [r.site.domain, r.unicode]), value: sites[0].site.domain }],
+      submit: async (v) => { const r = await api('site.templates.preview', { domain: v.domain, id: x.id, rules: x.rules }); const w = modal(`<h3>${h(name(x))} · ${h(v.domain)}</h3><pre class="out code" style="max-height:60vh;overflow:auto">${h(r.config)}</pre><div class="btns"><button class="btn primary" data-close>Close</button></div>`, { wide: true }); },
+    });
+  };
+  table($('[data-t]', m.el), {
+    rows: d.templates,
+    columns: [
+      { t: "Name", r: (x) => `<b>${h(name(x))}</b> ${x.builtin ? "<span class=\"tag\">built-in</span>" : ''}<br><small class="muted">${h(desc(x))}</small>` },
+      { t: "Sites", r: (x) => x.sites || '—', cls: 'nowrap' },
+    ],
+    actions: (x) => [
+      x.rules && { i: 'search', t: "How it looks on a site", fn: () => preview(x) },
+      x.rules && { i: 'copy', t: "Copy as your own", fn: () => edit(x, true) },
+      !x.builtin && { i: 'edit', t: "Edit", fn: () => edit(x, false) },
+      !x.builtin && { i: 'trash', t: "Delete", danger: true, fn: async () => { if (!(await confirmBox("Delete the template?", h(name(x)) + " will be deleted."))) return; try { await api('site.templates.delete', { id: x.id }); m.close(); siteTemplates(); } catch (e) { fail(e); } } },
+    ],
+  });
+  $('[data-new]', m.el).onclick = () => edit(null, false);
+}
+window.siteTemplates = siteTemplates;
 
 async function nginxCustom(domain) {
   const d = await api('sites.get', { domain });

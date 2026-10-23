@@ -1,4 +1,5 @@
 [
-  "PHP: the Modules window offers about 80 extensions by section, including ionCube Loader; each can be installed, turned off without removing, turned on and removed, with a search.",
+  "Websites: site templates — ready sets of nginx rules (WordPress, Laravel, Joomla, 1C-Bitrix, SPA, protecting service files) and your own templates; chosen in the site form, a template change is applied to all its sites with an nginx check and rollback.",
+  "PHP: modules that cannot be installed separately were removed from the Modules window.",
   "Minor bug fixes."
 ]

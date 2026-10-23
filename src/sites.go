@@ -173,10 +173,15 @@ func renderSiteNginx(s *Site, u *SiteUser, custom string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	tplName, tplRules := siteTemplateRules(s)
+	if tplRules != "" && nginxCustomRootLocation(tplRules) && nginxCustomRootLocation(custom) {
+		return nil, errf("Шаблон «%s» и свои правила сайта оба задают location /. Уберите один из них", tplName)
+	}
 	data := map[string]any{
+		"TemplateName": tplName, "TemplateRules": tplRules,
 		"SecurityHTTP": pre, "SecurityServer": rules, "SecurityLog": securityLog,
 		"Domain": s.Domain, "Names": strings.Join(siteNames(s), " "), "Root": s.Root, "Index": s.Index,
-		"CustomRootLocation": nginxCustomRootLocation(custom), "Custom": customPath(s.Domain), "AccessLog": u.Home + "/data/logs/" + s.Domain + ".access.log",
+		"CustomRootLocation": nginxCustomRootLocation(custom) || nginxCustomRootLocation(tplRules), "Custom": customPath(s.Domain), "AccessLog": u.Home + "/data/logs/" + s.Domain + ".access.log",
 		"ErrorLog": u.Home + "/data/logs/" + s.Domain + ".error.log", "MaxBody": s.MaxBody,
 		"Suspended": s.Suspended, "RedirectHTTPS": s.RedirectHTTPS && s.SSL != "", "WWWRedirect": s.WWWRedirect,
 		"Gzip": s.Gzip, "Mode": s.Mode, "ProxyTo": s.ProxyTo, "Expires": s.StaticExpires,
@@ -337,6 +342,7 @@ type siteIn struct {
 	MaxBody       int    `json:"max_body"`
 	ProxyTo       string `json:"proxy_to"`
 	TryIndex      bool   `json:"try_index"`
+	Template      string `json:"template"`
 	SSL           string `json:"ssl"`
 	AddWWW        bool   `json:"add_www"`
 	LE            bool   `json:"le"`
@@ -545,6 +551,7 @@ func createSiteJob(in siteIn, job *Job) (*Site, error) {
 	s.Aliases, s.Mode, s.PHP, s.Index, s.Backend = aliases, in.Mode, in.PHP, in.Index, in.Backend
 	s.RedirectHTTPS, s.WWWRedirect, s.Gzip, s.StaticExpires = in.RedirectHTTPS, in.WWWRedirect, in.Gzip, in.StaticExpires
 	s.MaxBody, s.ProxyTo, s.TryIndex, s.SSL, s.AutoSSL = in.MaxBody, in.ProxyTo, in.TryIndex, in.SSL, in.AutoSSL
+	s.Template = in.Template
 	jobStage(job, "Проверка конфигураций и перезапуск веб-сервера")
 	if err := applySite(s, oldPHP); err != nil {
 		if isNew {
@@ -638,6 +645,7 @@ func dirSize(path string) int64 {
 }
 
 func registerSites() {
+	registerSiteTemplates()
 	apiOp("sites.start", "Сайт: запуск сохранения", func(q *Req) (any, error) {
 		var in siteIn
 		if err := q.Bind(&in); err != nil {
@@ -719,7 +727,7 @@ func registerSites() {
 		}
 		email := store.Settings.Email
 		mu.Unlock()
-		return map[string]any{"users": users, "php": phpInstalled(), "php_all": phpAll, "apache": apacheReady(), "openlitespeed": olsInstalled() && olsManaged(), "default_php": defaultPHP(), "certs": certs, "email": email}, nil
+		return map[string]any{"templates": siteTemplateChoices(), "users": users, "php": phpInstalled(), "php_all": phpAll, "apache": apacheReady(), "openlitespeed": olsInstalled() && olsManaged(), "default_php": defaultPHP(), "certs": certs, "email": email}, nil
 	})
 	apiOp("sites.save", "Сайт: сохранение", func(q *Req) (any, error) {
 		var in siteIn

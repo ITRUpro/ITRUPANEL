@@ -59,8 +59,8 @@ The panel is **free for personal and commercial use**, including hosting for you
 
 | Area | What you get |
 | --- | --- |
-| **Websites** | Nginx + PHP-FPM, static sites, reverse proxy, per-site system user and PHP version, aliases, Cyrillic domains, redirects, gzip, custom Nginx directives, default site, optional Apache or OpenLiteSpeed backend |
-| **PHP** | Several PHP versions side by side, about 80 extensions you can install, turn off or remove (including ionCube Loader), `php.ini` editor |
+| **Websites** | Nginx + PHP-FPM, static sites, reverse proxy, per-site system user and PHP version, aliases, Cyrillic domains, redirects, gzip, site templates (WordPress, Laravel, Joomla, 1C-Bitrix, SPA and your own), custom Nginx directives, default site, optional Apache or OpenLiteSpeed backend |
+| **PHP** | Several PHP versions side by side, about 70 extensions you can install, turn off or remove (including ionCube Loader), `php.ini` editor |
 | **Databases** | MariaDB databases and users, phpMyAdmin, dump import and export, per-IP access, extra MySQL/MariaDB servers in Docker |
 | **Mail** | Postfix, Dovecot, OpenDKIM, Rspamd antispam, Roundcube webmail, quotas, aliases, forwarding, DNS checks |
 | **DNS and SSL** | BIND zones and records, Let’s Encrypt with automatic issue and renewal, self-signed and custom certificates |

@@ -29,7 +29,7 @@ func TestPHPExtCatalogIsConsistent(t *testing.T) {
 			t.Errorf("%s: недопустимое имя", e.Name)
 		}
 	}
-	if len(phpExtCatalog) < 70 {
+	if len(phpExtCatalog) < 60 {
 		t.Errorf("расширений мало: %d", len(phpExtCatalog))
 	}
 	for _, must := range []string{"ioncube", "redis", "imagick", "xdebug", "intl", "gd", "mbstring", "opcache", "swoole", "mongodb"} {
@@ -58,13 +58,13 @@ func TestPHPExtPackageNames(t *testing.T) {
 	old := osInfo
 	defer func() { osInfo = old }()
 	osInfo.Family = "debian"
-	for ext, want := range map[string]string{"redis": "php8.3-redis", "gd": "php8.3-gd", "mysql": "php8.3-mysql", "sodium": "php8.3-common", "pcntl": "php8.3-common"} {
+	for ext, want := range map[string]string{"redis": "php8.3-redis", "gd": "php8.3-gd", "mysql": "php8.3-mysql"} {
 		if got := phpExtPackage("8.3", ext); got != want {
 			t.Errorf("debian %s: %s, ждали %s", ext, got, want)
 		}
 	}
 	osInfo.Family = "rhel"
-	for ext, want := range map[string]string{"redis": "php83-php-pecl-redis", "gd": "php83-php-gd", "mysql": "php83-php-mysqlnd", "pcntl": "php83-php-process", "curl": "php83-php-common", "imagick": "php83-php-pecl-imagick"} {
+	for ext, want := range map[string]string{"redis": "php83-php-pecl-redis", "gd": "php83-php-gd", "mysql": "php83-php-mysqlnd", "curl": "php83-php-common", "imagick": "php83-php-pecl-imagick"} {
 		if got := phpExtPackage("8.3", ext); got != want {
 			t.Errorf("rhel %s: %s, ждали %s", ext, got, want)
 		}
@@ -155,7 +155,7 @@ func TestPHPExtAPIDryActions(t *testing.T) {
 	_, r := testAPI(t, mux, "php.ini", `{"version":"8.3"}`)
 	d := r["data"].(map[string]any)
 	cat := d["catalog"].([]any)
-	if len(cat) < 70 {
+	if len(cat) < 60 {
 		t.Fatalf("каталог: %d", len(cat))
 	}
 	var ion map[string]any

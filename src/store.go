@@ -45,6 +45,7 @@ type Site struct {
 	TryIndex      bool         `json:"try_index"` // try_files на index.php (ЧПУ)
 	AutoSSL       bool         `json:"auto_ssl"`  // выпускать Let's Encrypt автоматически
 	Suspended     bool         `json:"suspended"`
+	Template      string       `json:"template,omitempty"` // шаблон правил nginx ("" — стандартный)
 	Created       time.Time    `json:"created"`
 }
 
@@ -131,43 +132,44 @@ type Notice struct {
 }
 
 type Settings struct {
-	BackupMode          string        `json:"backup_mode"`
-	BackupSiteSettings  bool          `json:"backup_site_settings"`
-	BackupPanelSettings bool          `json:"backup_panel_settings"`
-	BackupSkipDBs       bool          `json:"backup_skip_dbs,omitempty"` // по умолчанию каждый день копируются все базы
-	AdminUser           string        `json:"admin_user"`
-	AdminHash           string        `json:"admin_hash"`
-	Email               string        `json:"email"`
-	BackupDaily         bool          `json:"backup_daily"`
-	BackupKeep          int           `json:"backup_keep"`
-	BackupHour          int           `json:"backup_hour"`
-	DefaultPHP          string        `json:"default_php"`
-	RecycleOff          bool          `json:"recycle_off,omitempty"`  // корзина менеджера файлов выключена
-	DefaultSite         string        `json:"default_site,omitempty"` // "" — страница «Сайт не найден», "-" — закрыть соединение, иначе домен
-	BackupTarget        string        `json:"backup_target"`          // local | ftp | both | s3 | webdav | dropbox | gdrive (и local_… для «здесь и в облаке»)
-	DNSNameservers      []string      `json:"dns_nameservers"`
-	DNSMail             bool          `json:"dns_mail"`
-	BackupFTP           BackupFTP     `json:"backup_ftp"`
-	BackupS3            BackupS3      `json:"backup_s3"`              // облачное хранилище (S3-совместимое)
-	TOTPEnabled         bool          `json:"totp_enabled,omitempty"` // двухэтапная аутентификация
-	TOTPSecret          string        `json:"totp_secret,omitempty"`
-	TOTPLastStep        int64         `json:"totp_last_step,omitempty"`
-	TOTPRecovery        []string      `json:"totp_recovery,omitempty"` // хеши резервных кодов
-	AllowIPs            []string      `json:"allow_ips,omitempty"`     // пусто — доступ с любого адреса
-	AutoUpdate          string        `json:"auto_update,omitempty"`   // off | patch | all
-	AutoUpdateHour      int           `json:"auto_update_hour,omitempty"`
-	AutoUpdateNotified  string        `json:"auto_update_notified,omitempty"` // номер запуска, о котором уже сообщено
-	BackupDAV           BackupWebDAV  `json:"backup_dav"`                     // WebDAV: Яндекс.Диск, Облако Mail.ru и др.
-	BackupDropbox       BackupDropbox `json:"backup_dropbox"`                 // Dropbox
-	BackupGDrive        BackupGDrive  `json:"backup_gdrive"`                  // Google Drive
-	DiskWarn            int           `json:"disk_warn"`
-	PMASecret           string        `json:"pma_secret"`
-	PanelDomain         string        `json:"panel_domain"`
-	PanelCert           string        `json:"panel_cert"`
-	DockerProjectDir    string        `json:"docker_project_dir,omitempty"`
-	PanelProxy          bool          `json:"panel_proxy,omitempty"`         // панель открывается через nginx на 443 без порта
-	PanelDirectClosed   bool          `json:"panel_direct_closed,omitempty"` // прямой доступ к порту панели только с самого сервера
-	PanelProxySecret    string        `json:"panel_proxy_secret,omitempty"`  // заголовок, по которому панель узнаёт свой nginx
+	BackupMode          string         `json:"backup_mode"`
+	BackupSiteSettings  bool           `json:"backup_site_settings"`
+	BackupPanelSettings bool           `json:"backup_panel_settings"`
+	BackupSkipDBs       bool           `json:"backup_skip_dbs,omitempty"` // по умолчанию каждый день копируются все базы
+	AdminUser           string         `json:"admin_user"`
+	AdminHash           string         `json:"admin_hash"`
+	Email               string         `json:"email"`
+	BackupDaily         bool           `json:"backup_daily"`
+	BackupKeep          int            `json:"backup_keep"`
+	BackupHour          int            `json:"backup_hour"`
+	DefaultPHP          string         `json:"default_php"`
+	RecycleOff          bool           `json:"recycle_off,omitempty"`    // корзина менеджера файлов выключена
+	SiteTemplates       []SiteTemplate `json:"site_templates,omitempty"` // свои шаблоны сайтов
+	DefaultSite         string         `json:"default_site,omitempty"`   // "" — страница «Сайт не найден», "-" — закрыть соединение, иначе домен
+	BackupTarget        string         `json:"backup_target"`            // local | ftp | both | s3 | webdav | dropbox | gdrive (и local_… для «здесь и в облаке»)
+	DNSNameservers      []string       `json:"dns_nameservers"`
+	DNSMail             bool           `json:"dns_mail"`
+	BackupFTP           BackupFTP      `json:"backup_ftp"`
+	BackupS3            BackupS3       `json:"backup_s3"`              // облачное хранилище (S3-совместимое)
+	TOTPEnabled         bool           `json:"totp_enabled,omitempty"` // двухэтапная аутентификация
+	TOTPSecret          string         `json:"totp_secret,omitempty"`
+	TOTPLastStep        int64          `json:"totp_last_step,omitempty"`
+	TOTPRecovery        []string       `json:"totp_recovery,omitempty"` // хеши резервных кодов
+	AllowIPs            []string       `json:"allow_ips,omitempty"`     // пусто — доступ с любого адреса
+	AutoUpdate          string         `json:"auto_update,omitempty"`   // off | patch | all
+	AutoUpdateHour      int            `json:"auto_update_hour,omitempty"`
+	AutoUpdateNotified  string         `json:"auto_update_notified,omitempty"` // номер запуска, о котором уже сообщено
+	BackupDAV           BackupWebDAV   `json:"backup_dav"`                     // WebDAV: Яндекс.Диск, Облако Mail.ru и др.
+	BackupDropbox       BackupDropbox  `json:"backup_dropbox"`                 // Dropbox
+	BackupGDrive        BackupGDrive   `json:"backup_gdrive"`                  // Google Drive
+	DiskWarn            int            `json:"disk_warn"`
+	PMASecret           string         `json:"pma_secret"`
+	PanelDomain         string         `json:"panel_domain"`
+	PanelCert           string         `json:"panel_cert"`
+	DockerProjectDir    string         `json:"docker_project_dir,omitempty"`
+	PanelProxy          bool           `json:"panel_proxy,omitempty"`         // панель открывается через nginx на 443 без порта
+	PanelDirectClosed   bool           `json:"panel_direct_closed,omitempty"` // прямой доступ к порту панели только с самого сервера
+	PanelProxySecret    string         `json:"panel_proxy_secret,omitempty"`  // заголовок, по которому панель узнаёт свой nginx
 }
 
 type State struct {

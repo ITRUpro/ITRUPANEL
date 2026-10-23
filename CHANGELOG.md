@@ -2,6 +2,11 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.14
+
+- **Site templates**: ready sets of nginx rules for a type of site — WordPress, Laravel / Symfony, Joomla, 1C-Bitrix, single-page application and "Protect service files" — and your own templates. A template is chosen in the site form; the panel keeps the base (ports, SSL, protection, PHP, closed service files) and the template only adds rules. Rules can use the variables `%DOMAIN%`, `%ROOT%`, `%USER%`, `%PHP%`, `%SOCK%`. Changing a template is applied to all its sites at once, nginx checks the result and everything is restored if it finds an error. The built-in templates were checked with a real nginx on Debian 12 in PHP and static modes
+- PHP: the Modules window no longer lists modules that cannot be installed separately (they are part of the main PHP package)
+
 ## 0.2.13
 
 - **PHP modules**: the Modules window of every PHP version now lists about 80 extensions by section — databases, cache and queues, graphics, strings and XML, network, encryption, debugging, archives and others — including **ionCube Loader**. Each module can be installed, **turned off without removing**, turned on again or removed, and the window has a search. ionCube Loader is downloaded from the developer's site (downloads.ioncube.com) and loaded first; PHP 5.6–8.5 are supported on amd64 and arm64

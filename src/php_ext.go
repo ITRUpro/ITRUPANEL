@@ -78,11 +78,9 @@ var phpExtCatalog = []phpExtDef{
 	{Name: "imagick", Title: "ImageMagick (imagick)", Group: grpGfx, Pecl: true},
 	{Name: "gmagick", Title: "GraphicsMagick (gmagick)", Group: grpGfx, Pecl: true},
 	{Name: "vips", Title: "libvips (быстрая обработка изображений)", Group: grpGfx, Pecl: true},
-	{Name: "exif", Title: "EXIF (метаданные фотографий)", Group: grpGfx, Builtin: true},
 
 	{Name: "mbstring", Title: "mbstring (многобайтовые строки)", Group: grpText},
 	{Name: "intl", Title: "intl (локализация, ICU)", Group: grpText},
-	{Name: "iconv", Title: "iconv (кодировки)", Group: grpText, Builtin: true},
 	{Name: "xml", Title: "XML (dom, simplexml, xmlreader, xmlwriter)", Group: grpText, Mods: []string{"xml", "dom", "simplexml", "xmlreader", "xmlwriter"}},
 	{Name: "xsl", Title: "XSL (преобразования XSLT)", Group: grpText},
 	{Name: "xmlrpc", Title: "XML-RPC", Group: grpText},
@@ -95,13 +93,9 @@ var phpExtCatalog = []phpExtDef{
 	{Name: "enchant", Title: "Enchant (проверка орфографии)", Group: grpText},
 	{Name: "pspell", Title: "Pspell (проверка орфографии)", Group: grpText},
 	{Name: "tidy", Title: "Tidy (чистка HTML)", Group: grpText},
-	{Name: "gettext", Title: "gettext (переводы)", Group: grpText, Builtin: true},
-	{Name: "calendar", Title: "Calendar (календари)", Group: grpText, Builtin: true},
 
 	{Name: "curl", Title: "cURL (HTTP-запросы)", Group: grpNet, Rhel: "common"},
 	{Name: "soap", Title: "SOAP", Group: grpNet},
-	{Name: "sockets", Title: "Sockets", Group: grpNet, Builtin: true},
-	{Name: "ftp", Title: "FTP", Group: grpNet, Builtin: true},
 	{Name: "ssh2", Title: "SSH2", Group: grpNet, Pecl: true},
 	{Name: "snmp", Title: "SNMP", Group: grpNet},
 	{Name: "imap", Title: "IMAP (почта)", Group: grpNet},
@@ -115,7 +109,6 @@ var phpExtCatalog = []phpExtDef{
 	{Name: "event", Title: "Event (libevent)", Group: grpNet, Pecl: true},
 	{Name: "ev", Title: "Ev (libev)", Group: grpNet, Pecl: true},
 
-	{Name: "sodium", Title: "Sodium (современная криптография)", Group: grpSec, Rhel: "sodium", Builtin: true},
 	{Name: "gnupg", Title: "GnuPG", Group: grpSec, Pecl: true},
 	{Name: "mcrypt", Title: "mcrypt (устаревшее шифрование)", Group: grpSec, Pecl: true},
 
@@ -131,10 +124,6 @@ var phpExtCatalog = []phpExtDef{
 	{Name: "rar", Title: "RAR", Group: grpArch, Pecl: true},
 
 	{Name: "ffi", Title: "FFI (вызов библиотек C)", Group: grpMisc},
-	{Name: "readline", Title: "Readline (консоль)", Group: grpMisc, Builtin: true},
-	{Name: "pcntl", Title: "pcntl (управление процессами)", Group: grpMisc, Rhel: "process", Builtin: true},
-	{Name: "posix", Title: "POSIX", Group: grpMisc, Rhel: "process", Builtin: true},
-	{Name: "shmop", Title: "shmop (общая память)", Group: grpMisc, Rhel: "process", Builtin: true},
 	{Name: "rrd", Title: "RRDtool", Group: grpMisc, Pecl: true},
 	{Name: "solr", Title: "Apache Solr", Group: grpMisc, Pecl: true},
 }

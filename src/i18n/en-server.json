@@ -1231,5 +1231,21 @@
   "Не удалось определить папку расширений PHP %s": "Could not determine the extensions folder of PHP %s",
   "Для этой версии PHP загрузчика ionCube нет": "There is no ionCube loader for this PHP version",
   "Для этой архитектуры загрузчика ionCube нет": "There is no ionCube loader for this architecture",
-  "пакета нет в репозитории для этой версии PHP или системы": "the package is not in the repository for this PHP version or system"
+  "пакета нет в репозитории для этой версии PHP или системы": "the package is not in the repository for this PHP version or system",
+  "Шаблон слишком большой": "The template is too large",
+  "В шаблоне лишняя закрывающая скобка }": "The template has an extra closing brace }",
+  "В шаблоне не закрыта кавычка": "A quote is not closed in the template",
+  "В шаблоне не закрыта скобка {": "A brace { is not closed in the template",
+  "Неизвестная переменная %s. Доступны: %%DOMAIN%%, %%ROOT%%, %%USER%%, %%PHP%%, %%SOCK%%": "Unknown variable %s. Available: %%DOMAIN%%, %%ROOT%%, %%USER%%, %%PHP%%, %%SOCK%%",
+  "Сайт %s: %s": "Site %s: %s",
+  "Название шаблона: от 1 до 60 символов": "Template name: 1 to 60 characters",
+  "Описание шаблона слишком длинное": "The template description is too long",
+  "Встроенный шаблон изменить нельзя: скопируйте его как свой": "A built-in template cannot be changed: copy it as your own",
+  "Шаблон с таким названием уже есть": "A template with this name already exists",
+  "Не больше 50 своих шаблонов": "No more than 50 templates of your own",
+  "Шаблон используют сайты (%d). Сначала выберите для них другой шаблон": "The template is used by sites (%d). Choose another template for them first",
+  "Шаблон не найден": "Template not found",
+  "Шаблон «%s» и свои правила сайта оба задают location /. Уберите один из них": "Template “%s” and the site's own rules both define location /. Remove one of them",
+  "Шаблон сайта: сохранение": "Site template: save",
+  "Шаблон сайта: удаление": "Site template: delete"
 }
