@@ -330,52 +330,6 @@ func phpInstall(v string) error {
 	return service("enable", phpService(v))
 }
 
-// Дополнительные модули, которые можно поставить из панели.
-var phpExtras = []string{"redis", "memcached", "apcu", "igbinary", "mongodb", "pgsql", "ldap", "gmp", "imap", "xdebug", "tidy", "xsl", "snmp", "sodium"}
-
-func phpExtPackage(v, ext string) string {
-	if osInfo.Family == "rhel" {
-		switch ext {
-		case "redis", "memcached", "apcu", "igbinary", "mongodb", "xdebug":
-			return "php" + vv(v) + "-php-pecl-" + ext
-		}
-		return "php" + vv(v) + "-php-" + ext
-	}
-	return "php" + v + "-" + ext
-}
-
-func phpExtInstall(v, ext string) error {
-	ok := false
-	for _, e := range phpExtras {
-		ok = ok || e == ext
-	}
-	if !ok {
-		return errf("Неизвестный модуль")
-	}
-	phpInstallMu.Lock()
-	defer phpInstallMu.Unlock()
-	if err := pkgInstall(phpExtPackage(v, ext)); err != nil {
-		return errf("Модуль %s для PHP %s не установлен: %s", ext, v, firstLine(err.Error()))
-	}
-	return service("restart", phpService(v))
-}
-
-func phpExtRemove(v, ext string) error {
-	phpInstallMu.Lock()
-	defer phpInstallMu.Unlock()
-	pkg := phpExtPackage(v, ext)
-	var err error
-	if osInfo.Family == "rhel" {
-		_, err = run("dnf", "remove", "-y", pkg)
-	} else {
-		_, err = run("apt-get", "purge", "-y", pkg)
-	}
-	if err != nil {
-		return err
-	}
-	return service("restart", phpService(v))
-}
-
 func registerPHP() {
 	api("php.list", func(q *Req) (any, error) {
 		inst := phpInstalled()
@@ -480,12 +434,13 @@ func registerPHP() {
 		if !cfg.Dry {
 			mods, _ = run(phpCLI(in.Version), "-m")
 		}
-		return map[string]any{"values": readIni(in.Version), "keys": phpIniKeys, "modules": strings.Fields(mods), "ini": phpIni(in.Version), "extras": phpExtras}, nil
+		return map[string]any{"values": readIni(in.Version), "keys": phpIniKeys, "modules": strings.Fields(mods), "ini": phpIni(in.Version), "extras": phpExtNames(), "catalog": phpExtOverview(in.Version)}, nil
 	})
 	apiOp("php.ext", "PHP: модуль", func(q *Req) (any, error) {
 		var in struct {
 			Version, Ext string
 			Remove       bool
+			Action       string // install | remove | enable | disable; пусто — по полю Remove
 		}
 		if err := q.Bind(&in); err != nil {
 			return nil, err
@@ -493,7 +448,15 @@ func registerPHP() {
 		if !phpIsInstalled(in.Version) {
 			return nil, errf("PHP %s не установлен", in.Version)
 		}
-		if in.Remove {
+		if phpExtFind(in.Ext) == nil {
+			return nil, errf("Неизвестный модуль")
+		}
+		switch {
+		case in.Action == "enable" || in.Action == "disable":
+			phpInstallMu.Lock()
+			defer phpInstallMu.Unlock()
+			return nil, phpExtSetEnabled(in.Version, in.Ext, in.Action == "enable")
+		case in.Remove || in.Action == "remove":
 			return nil, phpExtRemove(in.Version, in.Ext)
 		}
 		return nil, phpExtInstall(in.Version, in.Ext)

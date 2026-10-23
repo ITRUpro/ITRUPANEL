@@ -1662,20 +1662,41 @@ page('php', {
     every(5000, async () => { if ($$('.spin', p).length) load(); }, view);
   },
 });
-const EXT_NAMES = { redis: 'Redis', memcached: 'Memcached', apcu: "APCu (cache)", igbinary: 'igbinary', mongodb: 'MongoDB', pgsql: 'PostgreSQL', ldap: 'LDAP', gmp: 'GMP', imap: 'IMAP', xdebug: "Xdebug (debugging)", tidy: 'Tidy', xsl: 'XSL', snmp: 'SNMP', sodium: 'Sodium' };
 async function phpExt(v) {
   const d = await api('php.ini', { version: v });
-  const mods = (d.modules || []).map((m) => m.toLowerCase());
-  const has = (e) => mods.includes(e) || (e === 'pgsql' && mods.includes('pdo_pgsql')) || (e === 'xdebug' && mods.some((m) => m.includes('xdebug')));
-  const m = modal(`<h3>PHP ${h(v)}: modules</h3><p class="muted">Standard modules (mysql, gd, curl, mbstring, xml, zip, intl, imagick, opcache…) are installed with the version.</p>
-    <div class="table-wrap"><table class="grid"><tbody>${d.extras.map((e) => `<tr><td><b>${h(EXT_NAMES[e] || e)}</b> <span class="muted mono">${h(e)}</span></td><td>${has(e) ? "<span class=\"tag ok\">installed</span>" : "<span class=\"tag\">none</span>"}</td><td class="actions">${has(e) ? `<button class="btn small danger" data-rm="${e}">Delete</button>` : `<button class="btn small" data-add="${e}">Install</button>`}</td></tr>`).join('')}</tbody></table></div>
-    <div class="btns"><button class="btn primary" data-close>Done</button></div>`, { wide: true });
-  const act = async (ext, remove, b) => {
-    b.disabled = true; b.innerHTML = '<span class="spin" style="width:14px;height:14px;border-width:2px"></span>';
-    try { await api('php.ext', { version: v, ext, remove }); toast((remove ? "Deleted " : "Installed ") + ext, 'ok'); m.close(); phpExt(v); } catch (e) { fail(e); b.disabled = false; b.textContent = remove ? "Delete" : "Install"; }
+  const en = window.PanelLanguage?.language === 'en';
+  const list = (d.catalog || []).map((x) => ({ ...x, title: en && x.title_en ? x.title_en : x.title, gtitle: en && x.group_en ? x.group_en : x.group }));
+  const groups = [...new Set(list.map((x) => x.group))];
+  const stateTag = (x) => x.installed ? (x.enabled ? "<span class=\"tag ok\">enabled</span>" : "<span class=\"tag warn\">disabled</span>") : "<span class=\"tag\">not installed</span>";
+  const buttons = (x) => {
+    if (x.available === false) return `<span class="muted">${h((en && x.note_en) || x.note || "unavailable")}</span>`;
+    const b = [];
+    if (!x.installed) b.push(`<button class="btn small primary" data-act="install" data-ext="${h(x.name)}">${x.builtin ? "Enable" : "Install"}</button>`);
+    else {
+      b.push(`<button class="btn small" data-act="${x.enabled ? 'disable' : 'enable'}" data-ext="${h(x.name)}">${x.enabled ? "Disable" : "Enable"}</button>`);
+      if (!x.builtin) b.push(`<button class="btn small danger" data-act="remove" data-ext="${h(x.name)}">Delete</button>`);
+    }
+    return b.join(' ');
   };
-  $$('[data-add]', m.el).forEach((b) => (b.onclick = () => act(b.dataset.add, false, b)));
-  $$('[data-rm]', m.el).forEach((b) => (b.onclick = () => act(b.dataset.rm, true, b)));
+  const row = (x) => `<tr data-name="${h(x.name + ' ' + x.title).toLowerCase()}"><td><b>${h(x.title)}</b> <span class="muted mono">${h(x.name)}</span></td><td>${stateTag(x)}</td><td class="actions">${buttons(x)}</td></tr>`;
+  const m = modal(`<h3>PHP ${h(v)}: modules</h3><p class="muted">Pick the extensions you need: they can be installed, turned off without removing and turned on again. The main ones (mysql, gd, curl, mbstring, xml, zip, intl, opcache…) are installed with the version. Turning off a main module can stop websites that use it.</p>
+    <div class="toolbar" style="margin:8px 0"><input type="search" data-q placeholder="Search by name" aria-label="Search module" style="max-width:320px"></div>
+    <div style="max-height:56vh;overflow:auto"><table class="grid"><tbody>${groups.map((g) => `<tr class="group" data-group="${h(g)}"><td colspan="3"><b>${h(list.find((x) => x.group === g).gtitle)}</b></td></tr>${list.filter((x) => x.group === g).map(row).join('')}`).join('')}</tbody></table></div>
+    <div class="btns"><button class="btn primary" data-close>Done</button></div>`, { wide: true });
+  const filter = () => {
+    const q = $('[data-q]', m.el).value.trim().toLowerCase();
+    $$('tr[data-name]', m.el).forEach((r) => { r.hidden = !!q && !r.dataset.name.includes(q); });
+    $$('tr.group', m.el).forEach((g) => { let n = g.nextElementSibling, any = false; while (n && n.dataset.name !== undefined) { if (!n.hidden) any = true; n = n.nextElementSibling; } g.hidden = !any; });
+  };
+  $('[data-q]', m.el).oninput = filter;
+  const labels = { install: ["Installed ", "Install"], remove: ["Deleted ", "Delete"], enable: ["Enabled ", "Enable"], disable: ["Off ", "Disable"] };
+  $$('button[data-act]', m.el).forEach((b) => (b.onclick = async () => {
+    const act = b.dataset.act, ext = b.dataset.ext;
+    if (act === 'remove' && !(await confirmBox("Remove the module?", ext + " will be removed from PHP " + v + ". Websites that use it may stop working.", { ok: "Delete" }))) return;
+    if (act === 'disable' && !(await confirmBox("Turn off the module?", ext + " will be turned off in PHP " + v + ", but stays installed. Websites that use it may stop working.", { ok: "Disable", danger: false }))) return;
+    b.disabled = true; b.innerHTML = '<span class="spin" style="width:14px;height:14px;border-width:2px"></span>';
+    try { await api('php.ext', { version: v, ext, action: act }); toast(labels[act][0] + ext, 'ok'); m.close(); phpExt(v); } catch (e) { fail(e); b.disabled = false; b.textContent = labels[act][1]; }
+  }));
 }
 async function phpIni(v) {
   const d = await api('php.ini', { version: v });

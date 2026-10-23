@@ -2,6 +2,11 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.13
+
+- **PHP modules**: the Modules window of every PHP version now lists about 80 extensions by section — databases, cache and queues, graphics, strings and XML, network, encryption, debugging, archives and others — including **ionCube Loader**. Each module can be installed, **turned off without removing**, turned on again or removed, and the window has a search. ionCube Loader is downloaded from the developer's site (downloads.ioncube.com) and loaded first; PHP 5.6–8.5 are supported on amd64 and arm64
+- verified on Debian 12 with PHP 8.3: installing, turning off, turning on and removing ionCube and Redis
+
 ## 0.2.12
 
 - **Backups**: while a selected folder, files or a database are being prepared for download, a progress bar with the percentage and the estimated time left is shown in the corner of the screen (before, nothing was visible for minutes); the preparation can be stopped

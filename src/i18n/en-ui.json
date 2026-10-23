@@ -2006,7 +2006,7 @@
   "Подключена из облака": "Imported from the cloud",
   "Готовим файл для скачивания…": "Preparing the file for download…",
   "Не удалось подготовить файл": "Could not prepare the file",
-  "Скачать архив 0.2.12": "Download version 0.2.12",
+  "Скачать архив 0.2.13": "Download version 0.2.13",
   "Правила антивируса": "Antivirus rules",
   "Подписанный набор правил: версия": "Signed rule pack: version",
   "от": "from",
@@ -2038,5 +2038,16 @@
   "Готовим файл для скачивания": "Preparing the file for download",
   "меньше минуты": "less than a minute",
   "· осталось": "· remaining",
-  "· копия большая, подготовка может занять несколько минут": "· the backup is large, preparing can take several minutes"
+  "· копия большая, подготовка может занять несколько минут": "· the backup is large, preparing can take several minutes",
+  "включён": "enabled",
+  "недоступно": "unavailable",
+  "Выберите нужные расширения: их можно установить, выключить, не удаляя, и снова включить. Основные (mysql, gd, curl, mbstring, xml, zip, intl, opcache…) ставятся вместе с версией. Выключение основного модуля может остановить сайты, которые его используют.": "Pick the extensions you need: they can be installed, turned off without removing and turned on again. The main ones (mysql, gd, curl, mbstring, xml, zip, intl, opcache…) are installed with the version. Turning off a main module can stop websites that use it.",
+  "Поиск по названию": "Search by name",
+  "Поиск модуля": "Search module",
+  "Удалить модуль?": "Remove the module?",
+  "будет удалён из PHP": "will be removed from PHP",
+  ". Сайты, которые его используют, могут перестать работать.": ". Websites that use it may stop working.",
+  "Выключить модуль?": "Turn off the module?",
+  "будет выключен в PHP": "will be turned off in PHP",
+  ", но останется установленным. Сайты, которые его используют, могут перестать работать.": ", but stays installed. Websites that use it may stop working."
 }

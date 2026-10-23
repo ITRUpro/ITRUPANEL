@@ -1220,5 +1220,16 @@
   "Путь к AI-Bolit: полный путь к файлу ai-bolit.php": "AI-Bolit path: the full path to the ai-bolit.php file",
   "Укажите адрес файла ai-bolit.php вида https://…": "Enter the address of the ai-bolit.php file, like https://…",
   "Файл не проходит проверку PHP: %s": "The file fails the PHP check: %s",
-  "Это не файл сканера AI-Bolit (ai-bolit.php)": "This is not an AI-Bolit scanner file (ai-bolit.php)"
+  "Это не файл сканера AI-Bolit (ai-bolit.php)": "This is not an AI-Bolit scanner file (ai-bolit.php)",
+  "ionCube установлен, но PHP %s его не загрузил. Проверьте файл %s": "ionCube is installed, but PHP %s did not load it. Check the file %s",
+  "ionCube: в архиве нет загрузчика для PHP %s (%s)": "ionCube: the archive has no loader for PHP %s (%s)",
+  "ionCube: загрузка прервана: %s": "ionCube: the download was interrupted: %s",
+  "ionCube: не удалось скачать загрузчик с downloads.ioncube.com: %s": "ionCube: could not download the loader from downloads.ioncube.com: %s",
+  "ionCube: сервер ответил %s": "ionCube: the server answered %s",
+  "Модуль %s входит в основной пакет PHP: его можно только выключить": "The %s module is part of the main PHP package: it can only be turned off",
+  "Модуль %s не установлен": "Module %s is not installed",
+  "Не удалось определить папку расширений PHP %s": "Could not determine the extensions folder of PHP %s",
+  "Для этой версии PHP загрузчика ionCube нет": "There is no ionCube loader for this PHP version",
+  "Для этой архитектуры загрузчика ionCube нет": "There is no ionCube loader for this architecture",
+  "пакета нет в репозитории для этой версии PHP или системы": "the package is not in the repository for this PHP version or system"
 }
