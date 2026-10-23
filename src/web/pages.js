@@ -1339,7 +1339,13 @@ page('files', {
         const barHtml = useCM
           ? `<div class="ed-bar"><span class="muted mono ed-path">${h(p)}</span><span class="grow"></span><span class="tag warn" data-dirty hidden>не сохранено</span><select data-lang aria-label="Язык подсветки"></select><label class="check ed-wrap"><input type="checkbox" data-wrap><span>Перенос строк</span></label><button class="btn small" type="button" data-find>${icon('search')}Поиск</button></div><div class="cm-host"></div><div class="ed-status muted mono" data-status></div>`
           : `<div class="muted mono" style="margin-bottom:8px">${h(p)}</div><textarea class="editor" spellcheck="false">${h(d.text)}</textarea>`;
-        openForm({ title: p.split('/').pop(), wide: true, ok: 'Сохранить', fields: [{ type: 'html', html: barHtml }], submit: async () => { await api('files.write', { path: p, text: ed ? ed.getText() : $('.editor').value }); if (ed) ed.markSaved(); toast('Сохранено', 'ok'); return false; } });
+        let closeAfter = false;
+        openForm({ title: p.split('/').pop(), wide: true, ok: 'Сохранить', fields: [{ type: 'html', html: barHtml }], submit: async () => { try { await api('files.write', { path: p, text: ed ? ed.getText() : $('.editor').value }); } catch (e) { closeAfter = false; throw e; } if (ed) ed.markSaved(); toast('Сохранено', 'ok'); if (closeAfter) { closeAfter = false; return; } return false; } });
+        // «Сохранить и закрыть»: сохраняет файл и закрывает редактор; «Сохранить» оставляет его открытым.
+        const saveClose = document.createElement('button');
+        saveClose.type = 'button'; saveClose.className = 'btn'; saveClose.textContent = 'Сохранить и закрыть';
+        saveClose.onclick = () => { closeAfter = true; $('.drawer [data-ok]').click(); };
+        $('.drawer [data-ok]').after(saveClose);
         if (useCM) {
           const root = $('.drawer');
           $('.drawer-body', root).classList.add('ed-body');

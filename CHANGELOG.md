@@ -2,6 +2,10 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.20
+
+- file editor: a **Save and close** button next to Save; code highlighting for copies and drafts such as `config.php.new` or `index.html.bak` (the language is taken from the real extension before the suffix `.new`, `.bak`, `.old`, `.orig`, `.dist`, `.sample`, `.disabled` and similar)
+
 ## 0.2.19
 
 - file manager: a click or double click opens any file in the editor, except obvious binaries (images, archives, video, office documents, fonts, programs); before, files with an unfamiliar extension such as `config.php.new` were downloaded instead

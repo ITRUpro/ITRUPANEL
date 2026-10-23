@@ -13,9 +13,18 @@ const EXT = {
 };
 
 // languageFor определяет язык по имени и пути файла; пустая строка — обычный текст.
+// Расширения копий и заготовок: config.php.new, index.html.bak — подсветка по настоящему расширению перед ними.
+const COPY_SUFFIX = new Set(['new', 'bak', 'old', 'orig', 'save', 'dist', 'sample', 'example', 'tmp', 'disabled', 'backup', 'copy', 'swp', 'rej', 'default', 'template']);
+
 export function languageFor(filename) {
   const path = String(filename || '').replace(/\\/g, '/');
-  const name = path.split('/').pop().toLowerCase();
+  let name = path.split('/').pop().toLowerCase();
+  for (let i = 0; i < 3; i++) {
+    const d = name.lastIndexOf('.');
+    if (d > 0 && COPY_SUFFIX.has(name.slice(d + 1))) name = name.slice(0, d);
+    else break;
+  }
+  name = name.replace(/~$/, '');
   if (name === 'dockerfile' || name.startsWith('dockerfile.')) return 'Dockerfile';
   if (name === '.htaccess' || name === '.user.ini' || name === 'php.ini' || name === '.env' || name.startsWith('.env.')) return 'INI';
   if (name === 'crontab' || name === '.bashrc' || name === '.profile' || name === '.bash_profile') return 'Shell';

@@ -14,3 +14,12 @@ test('язык подсветки определяется по имени и п
   };
   for (const [name, want] of Object.entries(cases)) assert.equal(languageFor(name), want, name);
 });
+
+test('копии и заготовки подсвечиваются по настоящему расширению', () => {
+  const cases = {
+    'config.php.new': 'PHP', '/var/www/x/__swift/config/config.php.new': 'PHP', 'wp-config.php.bak': 'PHP', 'index.html.old': 'HTML',
+    'app.js.orig': 'JavaScript', 'settings.json.dist': 'JSON', 'config.ini.sample': 'INI', 'site.conf.disabled': 'Nginx',
+    'config.php~': 'PHP', 'config.php.bak.new': 'PHP', 'notes.txt.new': '', 'archive.new': '', '.new': '',
+  };
+  for (const [name, want] of Object.entries(cases)) assert.equal(languageFor(name), want, name);
+});
