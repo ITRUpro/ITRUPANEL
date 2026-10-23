@@ -2,6 +2,10 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.17
+
+- minor bug fixes (the site templates window closes when you open a form from it; a site template that does not suit the site mode is refused with an explanation)
+
 ## 0.2.16
 
 - minor bug fixes

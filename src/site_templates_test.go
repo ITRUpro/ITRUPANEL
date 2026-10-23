@@ -21,9 +21,13 @@ func TestBuiltinSiteTemplatesAreValidAndRender(t *testing.T) {
 			t.Fatalf("%s: %v", tpl.ID, err)
 		}
 		for _, mode := range []string{"php", "static"} {
-			s.Mode, s.Template = mode, tpl.ID
+			s.Mode, s.Backend, s.Template = mode, "", tpl.ID
 			b, err := renderSiteNginx(s, u, "")
 			if err != nil {
+				// Шаблоны для PHP не подходят статическому сайту (см. TestSiteTemplatesMatchSiteModes).
+				if mode == "static" && strings.Contains(err.Error(), "nginx + PHP-FPM") {
+					continue
+				}
 				t.Fatalf("%s/%s: %v", tpl.ID, mode, err)
 			}
 			text := string(b)
@@ -155,5 +159,54 @@ func TestSiteTemplateAPIFlow(t *testing.T) {
 	}
 	if len(store.Settings.SiteTemplates) != 0 {
 		t.Fatal("шаблон не удалён")
+	}
+}
+
+// Шаблон не должен ломать сайт: в режимах «прокси», Apache и OpenLiteSpeed запросы идут серверу приложения,
+// а шаблоны для PHP работают только в режиме «nginx + PHP-FPM».
+func TestSiteTemplatesMatchSiteModes(t *testing.T) {
+	testPanel(t)
+	s, u := nginxTestSite()
+	modes := []struct{ name, mode, backend string }{
+		{"php", "php", ""}, {"static", "static", ""}, {"proxy", "proxy", ""}, {"apache", "php", "apache"}, {"openlitespeed", "php", "openlitespeed"},
+	}
+	want := map[string]map[string]bool{
+		"plain":     {"php": true, "static": true, "proxy": true, "apache": true, "openlitespeed": true},
+		"hardened":  {"php": true, "static": true, "proxy": true, "apache": true, "openlitespeed": true},
+		"wordpress": {"php": true},
+		"laravel":   {"php": true},
+		"joomla":    {"php": true},
+		"bitrix":    {"php": true},
+		"spa":       {"php": true, "static": true},
+	}
+	for id, ok := range want {
+		for _, m := range modes {
+			s.Mode, s.Backend, s.Template, s.ProxyTo = m.mode, m.backend, id, "http://127.0.0.1:3000"
+			b, err := renderSiteNginx(s, u, "")
+			if ok[m.name] && err != nil {
+				t.Errorf("%s в режиме %s должен подходить: %v", id, m.name, err)
+			}
+			if !ok[m.name] && err == nil {
+				t.Errorf("%s в режиме %s принят, хотя сломал бы сайт", id, m.name)
+			}
+			// В режимах с сервером приложения проксирование остаётся на месте.
+			if err == nil && (m.name == "proxy" || m.name == "apache" || m.name == "openlitespeed") && !strings.Contains(string(b), "proxy_pass") {
+				t.Errorf("%s в режиме %s: пропало проксирование", id, m.name)
+			}
+		}
+	}
+	// Свой шаблон проверяется по содержимому, а не по названию.
+	store.Settings.SiteTemplates = []SiteTemplate{
+		{ID: "u-deny", Name: "Только запреты", Rules: "    location ~* \\.bak$ { deny all; }\n"},
+		{ID: "u-root", Name: "Свой корень", Rules: "    location / { try_files $uri =404; }\n"},
+	}
+	s.Mode, s.Backend = "php", "apache"
+	s.Template = "u-deny"
+	if _, err := renderSiteNginx(s, u, ""); err != nil {
+		t.Errorf("шаблон только с запретами должен подходить любому режиму: %v", err)
+	}
+	s.Template = "u-root"
+	if _, err := renderSiteNginx(s, u, ""); err == nil {
+		t.Error("свой шаблон с location / принят для Apache")
 	}
 }

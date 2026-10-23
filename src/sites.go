@@ -174,6 +174,11 @@ func renderSiteNginx(s *Site, u *SiteUser, custom string) ([]byte, error) {
 		return nil, err
 	}
 	tplName, tplRules := siteTemplateRules(s)
+	if tplRules != "" {
+		if err := siteTemplateCompat(tplName, tplRules, s); err != nil {
+			return nil, err
+		}
+	}
 	if tplRules != "" && nginxCustomRootLocation(tplRules) && nginxCustomRootLocation(custom) {
 		return nil, errf("Шаблон «%s» и свои правила сайта оба задают location /. Уберите один из них", tplName)
 	}

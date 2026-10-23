@@ -332,18 +332,19 @@ async function siteTemplates() {
   const en = window.PanelLanguage?.language === 'en';
   const name = (x) => (en && x.name_en) || x.name, desc = (x) => (en && x.desc_en) || x.desc;
   const m = modal(`<h3>Шаблоны сайтов</h3><p class="muted">Шаблон — готовый набор правил nginx под тип сайта. Основу (порты, SSL, защиту, PHP, закрытые служебные файлы) панель оставляет за собой, шаблон только добавляет правила. Встроенные шаблоны изменить нельзя, но их можно скопировать как свои. В правилах можно использовать переменные: ${d.vars.map((v) => '<code>' + h(v) + '</code>').join(' ')}.</p><div data-t></div><div class="btns"><button class="btn primary" data-new>Создать шаблон</button><button class="btn" data-close>Закрыть</button></div>`, { wide: true });
-  const edit = (x, copy) => openForm({
+  const edit = (x, copy) => { m.close(); openForm({
     title: x && !copy ? 'Шаблон: ' + name(x) : 'Новый шаблон', ok: 'Сохранить', wide: true,
     fields: [
       { name: 'name', label: 'Название', value: x ? (copy ? name(x) + ' (копия)' : name(x)) : '', required: true },
       { name: 'desc', label: 'Описание', value: x ? desc(x) : '', hint: 'Коротко: для какого сайта шаблон.' },
       { name: 'rules', label: 'Правила nginx (вставляются внутрь server {})', type: 'textarea', rows: 14, value: x ? x.rules : '    location / { try_files $uri $uri/ /index.php?$args; }\n', hint: 'Если в шаблоне есть location /, он заменяет стандартный блок панели. Обработчик PHP, проверка Let’s Encrypt и закрытие служебных файлов остаются у панели. Перед применением nginx проверяет настройки; при ошибке всё возвращается как было.' },
     ],
-    submit: async (v) => { const r = await api('site.templates.save', { id: x && !copy ? x.id : '', name: v.name, desc: v.desc, rules: v.rules }); toast(r.sites ? 'Сохранено, обновлено сайтов: ' + r.sites : 'Сохранено', 'ok'); m.close(); siteTemplates(); },
-  });
+    submit: async (v) => { const r = await api('site.templates.save', { id: x && !copy ? x.id : '', name: v.name, desc: v.desc, rules: v.rules }); toast(r.sites ? 'Сохранено, обновлено сайтов: ' + r.sites : 'Сохранено', 'ok'); siteTemplates(); },
+  }); };
   const preview = async (x) => {
     const sites = await api('sites.list');
     if (!sites.length) { toast('Сначала создайте сайт', 'err'); return; }
+    m.close();
     openForm({
       title: 'Как выглядит на сайте', ok: 'Показать', wide: true,
       fields: [{ name: 'domain', label: 'Сайт', type: 'select', options: sites.map((r) => [r.site.domain, r.unicode]), value: sites[0].site.domain }],

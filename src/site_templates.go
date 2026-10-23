@@ -36,38 +36,38 @@ type siteTemplateInfo struct {
 // Английские названия и описания встроенных шаблонов для интерфейса на английском.
 var siteTemplateEn = map[string][2]string{
 	"plain":     {"Standard", "No extra rules: the panel base does everything."},
-	"hardened":  {"Protect service files", "Denies access to .git, .env, .htpasswd, composer.*, package.json, database dumps (*.sql), backups (*.bak, *.old) and logs (*.log). Suits any website."},
-	"wordpress": {"WordPress", "Pretty permalinks, no PHP execution from the uploads folder, wp-config.php and xmlrpc.php closed. Site mode: nginx + PHP-FPM. xmlrpc.php is closed; the WordPress mobile app and Jetpack need it, so remove that line in your own copy of the template."},
-	"laravel":   {"Laravel / Symfony", "All requests go to index.php; .env, storage, vendor and service files are closed. Set the public folder as the site root in the site settings."},
-	"joomla":    {"Joomla", "Pretty links, configuration.php, logs and cache closed."},
-	"bitrix":    {"1C-Bitrix", "Routing through urlrewrite.php, no PHP execution from upload and the core service folders closed. Only the nginx syntax is checked; verify that it works on your site."},
-	"spa":       {"Single-page application (SPA)", "Addresses that are not files open index.html (React, Vue, Angular). Site mode: static only."},
+	"hardened":  {"Protect service files", "Denies access to .git, .env, .htpasswd, composer.*, package.json, database dumps (*.sql), backups (*.bak, *.old) and logs (*.log). Suits any website in any mode."},
+	"wordpress": {"WordPress", "Pretty permalinks, no PHP execution from the uploads folder, wp-config.php and xmlrpc.php closed. Works in the “nginx + PHP-FPM” mode. xmlrpc.php is closed; the WordPress mobile app and Jetpack need it, so remove that line in your own copy of the template."},
+	"laravel":   {"Laravel / Symfony", "All requests go to index.php; .env, storage, vendor and service files are closed. Works in the “nginx + PHP-FPM” mode. Set the public folder as the site root in the site settings."},
+	"joomla":    {"Joomla", "Pretty links, configuration.php, logs and cache closed. Works in the “nginx + PHP-FPM” mode."},
+	"bitrix":    {"1C-Bitrix", "Routing through urlrewrite.php, no PHP execution from upload and the core service folders closed. Works in the “nginx + PHP-FPM” mode. Only the nginx syntax is checked; verify that it works on your site."},
+	"spa":       {"Single-page application (SPA)", "Addresses that are not files open index.html (React, Vue, Angular). Works in the “nginx + PHP-FPM” and “static only” modes."},
 }
 
 var siteTemplateBuiltins = []SiteTemplate{
 	{ID: "plain", Name: "Стандартный", Desc: "Без дополнительных правил: всё делает основа панели."},
-	{ID: "hardened", Name: "Закрыть служебные файлы", Desc: "Запрещает доступ к .git, .env, .htpasswd, composer.*, package.json, дампам баз (*.sql), резервным копиям (*.bak, *.old) и журналам (*.log). Подходит любому сайту.",
+	{ID: "hardened", Name: "Закрыть служебные файлы", Desc: "Запрещает доступ к .git, .env, .htpasswd, composer.*, package.json, дампам баз (*.sql), резервным копиям (*.bak, *.old) и журналам (*.log). Подходит любому сайту в любом режиме.",
 		Rules: `    location ~* ^/(?:\.git|\.svn|\.hg)(?:/|$) { deny all; }
     location ~* /(?:\.env|\.htpasswd|composer\.(?:json|lock)|package(?:-lock)?\.json|yarn\.lock)$ { deny all; }
     location ~* \.(?:sql|sqlite|bak|old|orig|swp|log|ini|conf|sh)$ { deny all; }
 `},
-	{ID: "wordpress", Name: "WordPress", Desc: "Красивые ссылки, запрет запуска PHP из папки загрузок, закрытый wp-config.php и xmlrpc.php. Режим сайта — nginx + PHP-FPM. xmlrpc.php закрыт: приложению WordPress для телефона и Jetpack он нужен, тогда уберите эту строку в своей копии шаблона.",
+	{ID: "wordpress", Name: "WordPress", Desc: "Красивые ссылки, запрет запуска PHP из папки загрузок, закрытый wp-config.php и xmlrpc.php. Работает в режиме «nginx + PHP-FPM». xmlrpc.php закрыт: приложению WordPress для телефона и Jetpack он нужен, тогда уберите эту строку в своей копии шаблона.",
 		Rules: `    location / { try_files $uri $uri/ /index.php?$args; }
     location = /xmlrpc.php { deny all; }
     location ~* /wp-config\.php$ { deny all; }
     location ~* ^/wp-content/(?:uploads|files|cache)/.*\.php$ { deny all; }
 `},
-	{ID: "laravel", Name: "Laravel / Symfony", Desc: "Все запросы на index.php, закрыты .env, storage, vendor и служебные файлы. В настройках сайта укажите папку public как корень.",
+	{ID: "laravel", Name: "Laravel / Symfony", Desc: "Все запросы на index.php, закрыты .env, storage, vendor и служебные файлы. Работает в режиме «nginx + PHP-FPM». В настройках сайта укажите папку public как корень.",
 		Rules: `    location / { try_files $uri $uri/ /index.php?$query_string; }
     location ~* ^/(?:storage|vendor|bootstrap/cache)/.*\.php$ { deny all; }
     location ~* /(?:artisan|composer\.(?:json|lock)|phpunit\.xml|webpack\.mix\.js)$ { deny all; }
 `},
-	{ID: "joomla", Name: "Joomla", Desc: "Красивые ссылки, закрыты configuration.php, журналы и кэш.",
+	{ID: "joomla", Name: "Joomla", Desc: "Красивые ссылки, закрыты configuration.php, журналы и кэш. Работает в режиме «nginx + PHP-FPM».",
 		Rules: `    location / { try_files $uri $uri/ /index.php?$args; }
     location ~* /configuration\.php$ { deny all; }
     location ~* ^/(?:logs|tmp|cache)/.*\.php$ { deny all; }
 `},
-	{ID: "bitrix", Name: "1С-Битрикс", Desc: "Маршрутизация через urlrewrite.php, запрет запуска PHP из upload и закрытие служебных папок ядра. Проверяет только синтаксис nginx; работу на вашем сайте проверьте сами.",
+	{ID: "bitrix", Name: "1С-Битрикс", Desc: "Маршрутизация через urlrewrite.php, запрет запуска PHP из upload и закрытие служебных папок ядра. Работает в режиме «nginx + PHP-FPM». Проверяет только синтаксис nginx; работу на вашем сайте проверьте сами.",
 		Rules: `    location / { try_files $uri $uri/ @bitrix; }
     location @bitrix {
         include fastcgi_params;
@@ -80,7 +80,7 @@ var siteTemplateBuiltins = []SiteTemplate{
     location ~* ^/bitrix/(?:modules|local_cache|stack_cache|managed_cache|php_interface)/ { deny all; }
     location ~* ^/bitrix/(?:\.settings|\.settings_extra)\.php$ { deny all; }
 `},
-	{ID: "spa", Name: "Одностраничное приложение (SPA)", Desc: "Все адреса, которых нет в виде файлов, открывают index.html (React, Vue, Angular). Режим сайта — «Только статика».",
+	{ID: "spa", Name: "Одностраничное приложение (SPA)", Desc: "Все адреса, которых нет в виде файлов, открывают index.html (React, Vue, Angular). Работает в режимах «nginx + PHP-FPM» и «Только статика».",
 		Rules: `    location / { try_files $uri $uri/ /index.html; }
 `},
 }
@@ -114,6 +114,20 @@ func siteTemplateRules(s *Site) (name, rules string) {
 		return "", ""
 	}
 	return t.Name, expandSiteTemplate(t.Rules, s)
+}
+
+// siteTemplateCompat проверяет, что шаблон подходит режиму сайта. Шаблон с location / заменяет стандартный блок панели,
+// через который nginx передаёт запросы серверу приложения, поэтому в режимах «прокси», Apache и OpenLiteSpeed он
+// сломал бы сайт; шаблон, который обращается к PHP-FPM, работает только в режиме «nginx + PHP-FPM».
+func siteTemplateCompat(name, rules string, s *Site) error {
+	fpm := s.Mode == "php" && s.Backend == ""
+	if (strings.Contains(rules, "fastcgi_pass") || strings.Contains(rules, "/index.php")) && !fpm {
+		return errf("Шаблон «%s» работает только в режиме «nginx + PHP-FPM». Выберите другой шаблон или режим сайта", name)
+	}
+	if nginxCustomRootLocation(rules) && (s.Mode == "proxy" || s.Backend != "") {
+		return errf("Шаблон «%s» меняет обработку всех адресов и не подходит для режимов «прокси», Apache и OpenLiteSpeed: там это делает сервер приложения. Выберите «Стандартный» или «Закрыть служебные файлы»", name)
+	}
+	return nil
 }
 
 func expandSiteTemplate(rules string, s *Site) string {

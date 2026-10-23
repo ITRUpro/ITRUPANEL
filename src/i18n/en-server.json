@@ -1254,5 +1254,7 @@
   "Не больше 10 своих списков DNSBL": "No more than 10 DNSBL lists of your own",
   "Неверное имя списка DNSBL: %s": "Invalid DNSBL list name: %s",
   "Список %s уже проверяется или добавлен": "The list %s is already checked or added",
-  "Балл списка %s: от 0,1 до 20": "Score of list %s: 0.1 to 20"
+  "Балл списка %s: от 0,1 до 20": "Score of list %s: 0.1 to 20",
+  "Шаблон «%s» работает только в режиме «nginx + PHP-FPM». Выберите другой шаблон или режим сайта": "Template “%s” works only in the “nginx + PHP-FPM” mode. Choose another template or site mode",
+  "Шаблон «%s» меняет обработку всех адресов и не подходит для режимов «прокси», Apache и OpenLiteSpeed: там это делает сервер приложения. Выберите «Стандартный» или «Закрыть служебные файлы»": "Template “%s” changes how all addresses are handled and does not suit the proxy, Apache and OpenLiteSpeed modes: the application server does that there. Choose “Standard” or “Protect service files”"
 }

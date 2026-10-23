@@ -332,18 +332,19 @@ async function siteTemplates() {
   const en = window.PanelLanguage?.language === 'en';
   const name = (x) => (en && x.name_en) || x.name, desc = (x) => (en && x.desc_en) || x.desc;
   const m = modal(`<h3>Site templates</h3><p class="muted">A template is a ready set of nginx rules for a type of site. The panel keeps the base (ports, SSL, protection, PHP, closed service files) and the template only adds rules. Built-in templates cannot be changed, but you can copy them as your own. You can use these variables in the rules: ${d.vars.map((v) => '<code>' + h(v) + '</code>').join(' ')}.</p><div data-t></div><div class="btns"><button class="btn primary" data-new>Create a template</button><button class="btn" data-close>Close</button></div>`, { wide: true });
-  const edit = (x, copy) => openForm({
+  const edit = (x, copy) => { m.close(); openForm({
     title: x && !copy ? "Template: " + name(x) : "New template", ok: "Save", wide: true,
     fields: [
       { name: 'name', label: "Name", value: x ? (copy ? name(x) + " (copy)" : name(x)) : '', required: true },
       { name: 'desc', label: "Description", value: x ? desc(x) : '', hint: "Briefly: what kind of site the template is for." },
       { name: 'rules', label: "nginx rules (inserted inside server {})", type: 'textarea', rows: 14, value: x ? x.rules : '    location / { try_files $uri $uri/ /index.php?$args; }\n', hint: "If the template has location /, it replaces the standard panel block. The PHP handler, the Let’s Encrypt check and the closing of service files stay with the panel. nginx checks the settings before applying; on an error everything is restored as it was." },
     ],
-    submit: async (v) => { const r = await api('site.templates.save', { id: x && !copy ? x.id : '', name: v.name, desc: v.desc, rules: v.rules }); toast(r.sites ? "Saved, sites updated: " + r.sites : "Saved", 'ok'); m.close(); siteTemplates(); },
-  });
+    submit: async (v) => { const r = await api('site.templates.save', { id: x && !copy ? x.id : '', name: v.name, desc: v.desc, rules: v.rules }); toast(r.sites ? "Saved, sites updated: " + r.sites : "Saved", 'ok'); siteTemplates(); },
+  }); };
   const preview = async (x) => {
     const sites = await api('sites.list');
     if (!sites.length) { toast("Create a site first", 'err'); return; }
+    m.close();
     openForm({
       title: "How it looks on a site", ok: "Show", wide: true,
       fields: [{ name: 'domain', label: "Site", type: 'select', options: sites.map((r) => [r.site.domain, r.unicode]), value: sites[0].site.domain }],
