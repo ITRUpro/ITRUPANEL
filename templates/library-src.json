@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "version": "2026.10.23",
+  "released": "2026-10-23",
+  "templates": [
+    {
+      "id": "drupal",
+      "name": "Drupal 10",
+      "name_en": "Drupal 10",
+      "desc": "Красивые ссылки, стили изображений, закрыты служебные файлы и каталог vendor. Режим «nginx + PHP-FPM», корень сайта — папка web. Проверен синтаксис nginx; работу на вашем сайте проверьте сами.",
+      "desc_en": "Clean URLs, image styles, service files and the vendor folder closed. “nginx + PHP-FPM” mode, the site root is the web folder. Only the nginx syntax is checked; verify that it works on your site.",
+      "rules": "    location / { try_files $uri /index.php?$query_string; }\n    location @rewrite { rewrite ^ /index.php; }\n    location ~ ^/sites/[^/]+/files/styles/ { try_files $uri @rewrite; }\n    location ~ ^/sites/[^/]+/files/.*\\.php$ { deny all; }\n    location ~* \\.(engine|inc|install|make|module|profile|po|sh|sql|theme|twig|xtmpl|yml)(~|\\.sw[op]|\\.bak|\\.orig|\\.save)?$ { deny all; return 404; }\n    location ~ /vendor/.*\\.php$ { deny all; return 404; }\n"
+    },
+    {
+      "id": "opencart",
+      "name": "OpenCart",
+      "name_en": "OpenCart",
+      "desc": "Красивые ссылки магазина, закрыты каталоги кода (system, controller, model) и шаблоны. Режим «nginx + PHP-FPM». Проверен синтаксис nginx; работу на вашем сайте проверьте сами.",
+      "desc_en": "Pretty shop URLs, the code folders (system, controller, model) and templates closed. “nginx + PHP-FPM” mode. Only the nginx syntax is checked; verify that it works on your site.",
+      "rules": "    location / { try_files $uri $uri/ @opencart; }\n    location @opencart { rewrite ^/(.+)$ /index.php?_route_=$1 last; }\n    location ~* ^/(system|vendor|catalog/controller|catalog/model|admin/controller|admin/model)/.*\\.(php|tpl|twig)$ { deny all; }\n"
+    },
+    {
+      "id": "mediawiki",
+      "name": "MediaWiki",
+      "name_en": "MediaWiki",
+      "desc": "Короткие адреса страниц, запрет запуска PHP из папки загрузок, закрыты служебные каталоги и LocalSettings.php. Режим «nginx + PHP-FPM». Проверен синтаксис nginx; работу на вашем сайте проверьте сами.",
+      "desc_en": "Short page addresses, no PHP execution from the uploads folder, service folders and LocalSettings.php closed. “nginx + PHP-FPM” mode. Only the nginx syntax is checked; verify that it works on your site.",
+      "rules": "    location / { try_files $uri $uri/ @mediawiki; }\n    location @mediawiki { rewrite ^/(.*)$ /index.php?title=$1&$args last; }\n    location ~* ^/images/.*\\.(php|phtml|php5|php7)$ { deny all; }\n    location ~* ^/(cache|includes|maintenance|serialized|tests|languages|vendor)/ { deny all; }\n    location = /LocalSettings.php { deny all; }\n"
+    },
+    {
+      "id": "phpbb",
+      "name": "phpBB",
+      "name_en": "phpBB",
+      "desc": "Красивые ссылки форума через app.php, закрыты config.php, кэш, файлы и каталоги кода. Режим «nginx + PHP-FPM». Проверен синтаксис nginx; работу на вашем сайте проверьте сами.",
+      "desc_en": "Pretty forum URLs through app.php, config.php, cache, files and the code folders closed. “nginx + PHP-FPM” mode. Only the nginx syntax is checked; verify that it works on your site.",
+      "rules": "    location / { try_files $uri $uri/ @rewrite; }\n    location @rewrite { rewrite ^/(.*)$ /app.php/$1 last; }\n    location ~ ^/app\\.php(/|$) {\n        include fastcgi_params;\n        fastcgi_split_path_info ^(.+\\.php)(/.*)$;\n        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n        fastcgi_param PATH_INFO $fastcgi_path_info;\n        fastcgi_param HTTPS $https if_not_empty;\n        fastcgi_pass unix:%SOCK%;\n        fastcgi_read_timeout 300;\n    }\n    location ~ ^/(config\\.php|common\\.php|cache|files|images/avatars/upload|includes|store|vendor)(/|$) { deny all; }\n"
+    },
+    {
+      "id": "modx",
+      "name": "MODX",
+      "name_en": "MODX",
+      "desc": "Красивые ссылки MODX, закрыты каталоги core и setup. Режим «nginx + PHP-FPM». Проверен синтаксис nginx; работу на вашем сайте проверьте сами.",
+      "desc_en": "MODX friendly URLs, the core and setup folders closed. “nginx + PHP-FPM” mode. Only the nginx syntax is checked; verify that it works on your site.",
+      "rules": "    location / { try_files $uri $uri/ @modx-rewrite; }\n    location @modx-rewrite { rewrite ^/(.*)$ /index.php?q=$1&$args last; }\n    location ~* ^/(core|setup)/ { deny all; }\n"
+    },
+    {
+      "id": "php-framework",
+      "name": "PHP-фреймворк (CodeIgniter, Yii, Slim, Lumen)",
+      "name_en": "PHP framework (CodeIgniter, Yii, Slim, Lumen)",
+      "desc": "Все запросы идут на index.php, закрыты каталоги кода (app, system, writable, vendor, runtime). В настройках сайта укажите папку public как корень. Режим «nginx + PHP-FPM». Проверен синтаксис nginx; работу на вашем сайте проверьте сами.",
+      "desc_en": "All requests go to index.php, the code folders (app, system, writable, vendor, runtime) closed. Set the public folder as the site root in the site settings. “nginx + PHP-FPM” mode. Only the nginx syntax is checked; verify that it works on your site.",
+      "rules": "    location / { try_files $uri $uri/ /index.php$is_args$args; }\n    location ~* ^/(app|system|writable|tests|vendor|runtime|storage|config)/ { deny all; }\n"
+    }
+  ]
+}

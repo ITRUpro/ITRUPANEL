@@ -250,7 +250,7 @@ func writeIni(v string, set map[string]string) error {
 	if err := writeFile(p, []byte(s), 0644); err != nil {
 		return err
 	}
-	return service("restart", phpService(v))
+	return phpExtRestart(v)
 }
 
 // repairEmptyIniValues комментирует строки «ключ = » без значения для настроек панели:
@@ -493,7 +493,7 @@ func registerPHP() {
 		if err := q.Bind(&in); err != nil {
 			return nil, err
 		}
-		return nil, service("restart", phpService(in.Version))
+		return nil, phpExtRestart(in.Version)
 	})
 }
 

@@ -28,6 +28,7 @@ type SiteTemplate struct {
 type siteTemplateInfo struct {
 	SiteTemplate
 	Builtin bool   `json:"builtin"`
+	Library bool   `json:"library,omitempty"` // из подписанной библиотеки шаблонов
 	Sites   int    `json:"sites"`
 	NameEn  string `json:"name_en,omitempty"`
 	DescEn  string `json:"desc_en,omitempty"`
@@ -90,6 +91,9 @@ var reTemplateID = regexp.MustCompile(`^[a-z0-9-]{1,40}$`)
 func siteTemplateByID(id string) (SiteTemplate, bool) {
 	if siteTemplatePreview != nil && id == siteTemplatePreview.ID {
 		return *siteTemplatePreview, true
+	}
+	if t, ok := tplLibFind(id); ok {
+		return SiteTemplate{ID: t.ID, Name: t.Name, Desc: t.Desc, Rules: t.Rules}, true
 	}
 	if id == "" {
 		return siteTemplateBuiltins[0], true
@@ -247,7 +251,9 @@ func sitesUsingTemplate(id string) []*Site {
 }
 
 func registerSiteTemplates() {
+	registerSiteTemplateLibrary()
 	api("site.templates.list", func(q *Req) (any, error) {
+		library := tplLibInfo() // берёт mu сам, поэтому до блокировки
 		mu.Lock()
 		defer mu.Unlock()
 		var rows []siteTemplateInfo
@@ -258,12 +264,17 @@ func registerSiteTemplates() {
 			}
 			rows = append(rows, siteTemplateInfo{SiteTemplate: t, Builtin: true, Sites: n, NameEn: siteTemplateEn[t.ID][0], DescEn: siteTemplateEn[t.ID][1]})
 		}
+		if p := tplLib.Load(); p != nil {
+			for _, t := range p.Templates {
+				rows = append(rows, siteTemplateInfo{SiteTemplate: SiteTemplate{ID: t.ID, Name: t.Name, Desc: t.Desc, Rules: t.Rules}, Library: true, Sites: len(sitesUsingTemplate(t.ID)), NameEn: t.NameEn, DescEn: t.DescEn})
+			}
+		}
 		custom := append([]SiteTemplate(nil), store.Settings.SiteTemplates...)
 		sort.Slice(custom, func(i, j int) bool { return custom[i].Name < custom[j].Name })
 		for _, t := range custom {
 			rows = append(rows, siteTemplateInfo{SiteTemplate: t, Sites: len(sitesUsingTemplate(t.ID))})
 		}
-		return map[string]any{"templates": rows, "vars": []string{"%DOMAIN%", "%ROOT%", "%USER%", "%PHP%", "%SOCK%"}}, nil
+		return map[string]any{"templates": rows, "library": library, "vars": []string{"%DOMAIN%", "%ROOT%", "%USER%", "%PHP%", "%SOCK%"}}, nil
 	})
 	apiOp("site.templates.save", "Шаблон сайта: сохранение", func(q *Req) (any, error) {
 		var in struct {
@@ -406,6 +417,11 @@ func siteTemplateChoices() []map[string]string {
 	var out []map[string]string
 	for _, t := range siteTemplateBuiltins {
 		out = append(out, map[string]string{"id": map[bool]string{true: "", false: t.ID}[t.ID == "plain"], "name": t.Name, "desc": t.Desc, "name_en": siteTemplateEn[t.ID][0], "desc_en": siteTemplateEn[t.ID][1]})
+	}
+	if p := tplLib.Load(); p != nil {
+		for _, t := range p.Templates {
+			out = append(out, map[string]string{"id": t.ID, "name": t.Name, "desc": t.Desc, "name_en": t.NameEn, "desc_en": t.DescEn})
+		}
 	}
 	for _, t := range store.Settings.SiteTemplates {
 		out = append(out, map[string]string{"id": t.ID, "name": t.Name, "desc": t.Desc})

@@ -184,6 +184,7 @@ func renderSiteNginx(s *Site, u *SiteUser, custom string) ([]byte, error) {
 	}
 	data := map[string]any{
 		"TemplateName": tplName, "TemplateRules": tplRules,
+		"GuardHTTP": guardHTTP(s), "GuardServer": guardServer(s), "CacheHTTP": cacheHTTP(s), "CacheOn": siteCacheOn(s), "CacheFastCGI": cacheDirectives(s, "fastcgi"), "CacheProxy": cacheDirectives(s, "proxy"),
 		"SecurityHTTP": pre, "SecurityServer": rules, "SecurityLog": securityLog,
 		"Domain": s.Domain, "Names": strings.Join(siteNames(s), " "), "Root": s.Root, "Index": s.Index,
 		"CustomRootLocation": nginxCustomRootLocation(custom) || nginxCustomRootLocation(tplRules), "Custom": customPath(s.Domain), "AccessLog": u.Home + "/data/logs/" + s.Domain + ".access.log",
@@ -258,6 +259,10 @@ func applySite(s *Site, oldPHP string) (resultErr error) {
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	ensureSiteCache(s)
+	if err := writeSiteAuth(s); err != nil {
+		return err
+	}
 	if err := prepareSecurityLogs(s); err != nil {
 		return err
 	}
@@ -273,7 +278,7 @@ func applySite(s *Site, oldPHP string) (resultErr error) {
 	// PHP-FPM
 	if oldPHP != "" && oldPHP != s.PHP {
 		os.Remove(P(phpPoolDir(oldPHP) + "/" + poolName(s.Domain) + ".conf"))
-		service("restart", phpService(oldPHP))
+		phpExtRestart(oldPHP)
 	}
 	if s.Mode == "php" && s.PHP != "" {
 		if !phpIsInstalled(s.PHP) {
@@ -289,13 +294,13 @@ func applySite(s *Site, oldPHP string) (resultErr error) {
 			if err := writeFile(poolFile, pb, 0644); err != nil {
 				return err
 			}
-			if err := service("restart", phpService(s.PHP)); err != nil {
+			if err := phpExtRestart(s.PHP); err != nil {
 				return err
 			}
 		}
 	} else if oldPHP != "" {
 		os.Remove(P(phpPoolDir(oldPHP) + "/" + poolName(s.Domain) + ".conf"))
-		service("restart", phpService(oldPHP))
+		phpExtRestart(oldPHP)
 	}
 
 	rollbackOLS, err := applyOLS(s)
@@ -348,6 +353,16 @@ type siteIn struct {
 	ProxyTo       string `json:"proxy_to"`
 	TryIndex      bool   `json:"try_index"`
 	Template      string `json:"template"`
+	CacheTTL      int    `json:"cache_ttl"`
+	PHPProfile    string `json:"php_profile"`
+	GuardHeaders  bool   `json:"guard_headers"`
+	GuardHotlink  bool   `json:"guard_hotlink"`
+	GuardAdminIPs string `json:"guard_admin_ips"`
+	AuthUser      string `json:"auth_user"`
+	AuthPassword  string `json:"auth_password"`
+	PHPMemory     int    `json:"php_memory"`
+	PHPMaxExec    int    `json:"php_max_exec"`
+	Kind          string `json:"kind"` // тип нового сайта: см. site_kinds.go
 	SSL           string `json:"ssl"`
 	AddWWW        bool   `json:"add_www"`
 	LE            bool   `json:"le"`
@@ -368,6 +383,11 @@ func createSiteJob(in siteIn, job *Job) (*Site, error) {
 	d, err := toASCII(in.Domain)
 	if err != nil {
 		return nil, err
+	}
+	if !in.Edit {
+		if err := applySiteKind(&in); err != nil {
+			return nil, err
+		}
 	}
 	var aliases []string
 	for _, a := range strings.FieldsFunc(in.Aliases, func(r rune) bool { return r == ' ' || r == ',' || r == '\n' }) {
@@ -408,6 +428,22 @@ func createSiteJob(in siteIn, job *Job) (*Site, error) {
 	}
 	if in.WWWRedirect != "" && in.WWWRedirect != "to_www" && in.WWWRedirect != "from_www" {
 		in.WWWRedirect = ""
+	}
+	if !validCacheTTL(in.CacheTTL) || (in.Mode == "static" && in.CacheTTL != 0) {
+		in.CacheTTL = 0
+	}
+	if err := validatePHPSiteSettings(&in); err != nil {
+		return nil, err
+	}
+	var prevGuard SiteGuard
+	mu.Lock()
+	if old := findSite(d); old != nil {
+		prevGuard = old.Guard
+	}
+	mu.Unlock()
+	guard, err := guardFromInput(in, prevGuard)
+	if err != nil {
+		return nil, err
 	}
 
 	mu.Lock()
@@ -517,6 +553,9 @@ func createSiteJob(in siteIn, job *Job) (*Site, error) {
 			return nil, err
 		}
 		root := u.Home + "/data/www/" + d
+		if k, ok := siteKindByID(in.Kind); ok && k.RootSub != "" && in.Root == "" {
+			root += "/" + k.RootSub
+		}
 		if in.Root != "" {
 			r, ok := safeUnder(u.Home, in.Root)
 			if !ok {
@@ -531,6 +570,11 @@ func createSiteJob(in siteIn, job *Job) (*Site, error) {
 			os.WriteFile(P(root+"/index.html"), []byte(fmt.Sprintf(placeholderHTML, title, title)), 0644)
 		}
 		run("chown", "-R", in.User+":"+in.User, root)
+		// Корень в подпапке (public у Laravel): папка сайта, созданная вместе с ней, тоже принадлежит владельцу сайта,
+		// иначе веб-сервер не сможет в неё войти.
+		if base := u.Home + "/data/www/" + d; root != base && strings.HasPrefix(root, base+"/") {
+			run("chown", in.User+":"+in.User, base)
+		}
 	} else {
 		oldPHP = s.PHP
 		if s.Mode != "php" {
@@ -557,6 +601,9 @@ func createSiteJob(in siteIn, job *Job) (*Site, error) {
 	s.RedirectHTTPS, s.WWWRedirect, s.Gzip, s.StaticExpires = in.RedirectHTTPS, in.WWWRedirect, in.Gzip, in.StaticExpires
 	s.MaxBody, s.ProxyTo, s.TryIndex, s.SSL, s.AutoSSL = in.MaxBody, in.ProxyTo, in.TryIndex, in.SSL, in.AutoSSL
 	s.Template = in.Template
+	s.CacheTTL = in.CacheTTL
+	s.PHPProfile, s.PHPMemory, s.PHPMaxExec = in.PHPProfile, in.PHPMemory, in.PHPMaxExec
+	s.Guard = guard
 	jobStage(job, "Проверка конфигураций и перезапуск веб-сервера")
 	if err := applySite(s, oldPHP); err != nil {
 		if isNew {
@@ -568,6 +615,9 @@ func createSiteJob(in siteIn, job *Job) (*Site, error) {
 			*s = prev
 		}
 		return nil, err
+	}
+	if !isNew && prev.CacheTTL > 0 && s.CacheTTL == 0 {
+		removeSiteCache(d)
 	}
 	if isNew {
 		store.Sites = append(store.Sites, s)
@@ -609,7 +659,7 @@ func deleteSite(domain string, removeFiles bool) error {
 	}
 	if s.PHP != "" {
 		os.Remove(P(phpPoolDir(s.PHP) + "/" + poolName(domain) + ".conf"))
-		service("restart", phpService(s.PHP))
+		phpExtRestart(s.PHP)
 	}
 	nginxTestReload()
 	if removeFiles {
@@ -619,6 +669,8 @@ func deleteSite(domain string, removeFiles bool) error {
 		}
 	}
 	os.Remove(P(customPath(domain)))
+	os.Remove(P(siteAuthFile(domain)))
+	removeSiteCache(domain)
 	var keep []*Site
 	for _, x := range store.Sites {
 		if x != s {
@@ -651,6 +703,7 @@ func dirSize(path string) int64 {
 
 func registerSites() {
 	registerSiteTemplates()
+	registerSiteCache()
 	apiOp("sites.start", "Сайт: запуск сохранения", func(q *Req) (any, error) {
 		var in siteIn
 		if err := q.Bind(&in); err != nil {
@@ -692,7 +745,7 @@ func registerSites() {
 		out := []map[string]any{}
 		for _, s := range store.Sites {
 			c := findCert(s.SSL)
-			row := map[string]any{"site": s, "unicode": toUnicode(s.Domain)}
+			row := map[string]any{"site": siteForUI(s), "unicode": toUnicode(s.Domain)}
 			if s.Mode == "php" && s.Backend != "" {
 				row["web_version"] = web[s.Backend]
 			} else {
@@ -718,7 +771,7 @@ func registerSites() {
 		if s == nil {
 			return nil, errf("Сайт не найден")
 		}
-		return map[string]any{"site": s, "custom": readFile(customPath(s.Domain)), "vhost": readFile(vhostPath(s.Domain))}, nil
+		return map[string]any{"site": siteForUI(s), "custom": readFile(customPath(s.Domain)), "vhost": readFile(vhostPath(s.Domain))}, nil
 	})
 	api("sites.form", func(q *Req) (any, error) {
 		mu.Lock()
@@ -732,7 +785,7 @@ func registerSites() {
 		}
 		email := store.Settings.Email
 		mu.Unlock()
-		return map[string]any{"templates": siteTemplateChoices(), "users": users, "php": phpInstalled(), "php_all": phpAll, "apache": apacheReady(), "openlitespeed": olsInstalled() && olsManaged(), "default_php": defaultPHP(), "certs": certs, "email": email}, nil
+		return map[string]any{"php_profiles": phpProfileChoices(), "kinds": siteKindChoices(), "templates": siteTemplateChoices(), "users": users, "php": phpInstalled(), "php_all": phpAll, "apache": apacheReady(), "openlitespeed": olsInstalled() && olsManaged(), "default_php": defaultPHP(), "certs": certs, "email": email}, nil
 	})
 	apiOp("sites.save", "Сайт: сохранение", func(q *Req) (any, error) {
 		var in siteIn
@@ -850,7 +903,8 @@ func renderPHPPool(s *Site, u *SiteUser) ([]byte, error) {
 	var pb bytes.Buffer
 	data := map[string]any{
 		"Domain": s.Domain, "Version": s.PHP, "Pool": poolName(s.Domain), "User": s.User, "Home": u.Home,
-		"Sock": sockPath(s.Domain), "WebUser": osInfo.WebUser, "MaxChildren": 10, "MaxBody": s.MaxBody, "Ini": map[string]string{},
+		"Sock": sockPath(s.Domain), "WebUser": osInfo.WebUser, "MaxBody": s.MaxBody, "Ini": phpSiteIni(s),
+		"PM": phpPoolSettings(s.PHPProfile, phpMemTotalMB()),
 	}
 	if e := tplPool.Execute(&pb, data); e != nil {
 		return nil, e

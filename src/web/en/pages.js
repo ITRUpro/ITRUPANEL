@@ -239,14 +239,28 @@ async function siteForm(edit) {
   openForm({
     title: isNew ? "Create site" : "Site " + toU(s.domain),
     ok: isNew ? "Create" : "Save",
+    onChange: (v, name) => {
+      if (name !== 'kind') return;
+      const k = (meta.kinds || []).find((x) => x.id === v.kind);
+      if (!k) return;
+      v.mode = k.mode; v.template = k.template || ''; v.try_index = !!k.try_index;
+      if (k.index) v.index = k.index;
+    },
     fields: [
       { name: 'domain', label: "Domain", value: s.domain ? toU(s.domain) : '', required: true, readonly: !isNew, placeholder: 'example.ru', hint: isNew ? "Internationalised domains supported: пример.рф" : '' },
       { name: 'add_www', label: "Add www alias", type: 'checkbox', value: isNew, show: () => isNew },
       { name: 'aliases', label: "Aliases (space separated)", value: (s.aliases || []).map(toU).join(' '), placeholder: 'www.example.ru shop.example.ru', hint: "Leave blank to remove all aliases." },
       { name: 'user', label: "Owner (system user)", type: 'select', options: users, value: '', show: () => isNew },
+      { name: 'kind', label: "What kind of site?", type: 'select', value: 'php', show: () => isNew, options: (meta.kinds || []).map((k) => [k.id, (window.PanelLanguage?.language === 'en' && k.name_en) || k.name]) },
+      { type: 'html', show: () => isNew, html: (v) => { const k = (meta.kinds || []).find((x) => x.id === v.kind); return k ? `<p class="hint">${h((window.PanelLanguage?.language === 'en' && k.desc_en) || k.desc)}</p>` : ''; } },
       { name: 'mode', label: "Operating mode", type: 'seg', value: s.mode === 'php' && ['apache', 'openlitespeed'].includes(s.backend) ? s.backend : (s.mode || 'php'), options: [['php', 'nginx + PHP-FPM'], ['apache', 'nginx + Apache'], ['openlitespeed', 'nginx + OpenLiteSpeed'], ['static', "Static only"], ['proxy', "Proxy"]],
         hint: "Apache supports .htaccess; OpenLiteSpeed supports Rewrite rules in .htaccess. All modes use PHP-FPM. OpenLiteSpeed is installed when first selected. After editing .htaccess, restart OpenLiteSpeed in Server information." },
       { name: 'php', label: "PHP version", type: 'select', options: php, value: s.php || meta.default_php || '8.3', show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode), hint: "If this version is not installed, the panel installs it on save (2–5 minutes). <a href=\"#/php\">All PHP versions</a>" },
+      { name: 'php_profile', label: "PHP load", type: 'select', value: s.php_profile || '', show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode),
+        options: (meta.php_profiles || []).map((x) => [x.id, ((window.PanelLanguage?.language === 'en' && x.name_en) || x.name) + ' — ' + x.summary]),
+        hint: "How many PHP processes the site keeps. “Economical” suits a weak server, “High load” a busy site or shop; the panel calculates the number of processes from the server memory. If the server hosts many sites, do not set high load for all of them." },
+      { name: 'php_memory', label: "Memory per PHP script, MB (0 — default)", type: 'number', value: s.php_memory || 0, show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode), hint: "Heavy sites (for example WooCommerce or Bitrix) usually need 256–512 MB." },
+      { name: 'php_max_exec', label: "PHP script run time, seconds (0 — default)", type: 'number', value: s.php_max_exec || 0, show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode) },
       { name: 'try_index', label: "Route all requests to index.php (friendly URLs)", type: 'checkbox', value: s.try_index ?? true, show: (v) => v.mode === 'php', hint: "Required for Laravel, X3 and most CMS platforms. Apache mode uses .htaccess for this." },
       { name: 'template', label: "Site template", type: 'select', options: (meta.templates || []).map((t) => [t.id, (window.PanelLanguage?.language === 'en' && t.name_en) || t.name]), value: s.template || '', hint: "A ready set of nginx rules for a type of site (WordPress, Laravel, Joomla, SPA…). Your own templates and their descriptions: the Templates button on the sites page." },
       { name: 'proxy_to', label: "Application address", value: s.proxy_to || '', placeholder: 'http://127.0.0.1:3000', show: (v) => v.mode === 'proxy' },
@@ -259,13 +273,23 @@ async function siteForm(edit) {
       { type: 'section', label: "Advanced" },
       { name: 'www_redirect', label: "www redirect", type: 'select', value: s.www_redirect ?? (isNew ? 'from_www' : ''), options: [['', "No"], ['from_www', "www.domain → domain"], ['to_www', "domain → www.domain"]] },
       { name: 'gzip', label: "gzip compression", type: 'checkbox', value: s.gzip ?? true },
+      { name: 'cache_ttl', label: "Page cache (speeds the site up)", type: 'select', value: String(s.cache_ttl || 0), show: (v) => v.mode !== 'static', options: [['0', "Off"], ['1', "1 minute"], ['5', "5 minutes"], ['10', "10 minutes"], ['30', "30 minutes"], ['60', "1 hour"], ['360', "6 hours"], ['1440', "1 day"]], hint: "Ready pages are served from the nginx cache without running PHP, so the site is noticeably faster. Requests with data and address parameters, logged-in users, admin areas and carts are not cached. The Clear cache button is in the site row. For your own applications with personal pages without a cookie sign-in, choose the period carefully." },
       { name: 'static_expires', label: "Browser caching for static files", type: 'select', value: s.static_expires ?? (isNew ? '30d' : ''), options: [['', "Not set"], ['1d', "1 day"], ['7d', "7 days"], ['30d', "30 days"], ['365d', "1 year"]], show: (v) => v.mode !== 'proxy' },
+      { type: 'section', label: "Site protection" },
+      { name: 'guard_headers', label: "Security headers", type: 'checkbox', value: !!(s.guard || {}).headers, hint: "The browser will not let the site be embedded in another page and will not “guess” file types; with HTTPS, HSTS is added." },
+      { name: 'guard_hotlink', label: "Protect images and video from hotlinking", type: 'checkbox', value: !!(s.guard || {}).hotlink, hint: "The files are not shown on other sites and do not use your traffic. Search engines, Yandex, Google and social networks are allowed." },
+      { name: 'auth_user', label: "Password for the whole site: login", value: (s.guard || {}).auth_user || '', placeholder: "empty — no password", hint: "The site opens only after entering a login and password (the Let’s Encrypt check is not affected). Handy for a site under development." },
+      { name: 'auth_password', label: "Password for the whole site: password", type: 'password', value: '', gen: true, show: (v) => !!(v.auth_user || '').trim(), hint: ((s.guard || {}).auth_set ? "The password is already set: leave the field empty to keep it." : "At least 8 characters.") },
+      { name: 'guard_admin_ips', label: "Admin area only from these addresses", type: 'textarea', rows: 3, value: ((s.guard || {}).admin_ips || []).join('\n'), placeholder: '203.0.113.5\n198.51.100.0/24', hint: "One address or network per line. /wp-admin, /wp-login.php, /administrator, /bitrix/admin, /admin, /manager and /phpmyadmin are closed for everyone else. Empty — no restriction. Add your own address, or you will lose access." },
       { name: 'max_body', label: "Maximum upload size, MB", type: 'number', value: s.max_body || 64 },
       { name: 'index', label: "Index files", value: s.index || 'index.php index.html', show: (v) => v.mode !== 'proxy' },
       { name: 'root', label: "Root directory", value: s.root || '', placeholder: "default /var/www/<user>/data/www/<domain>", show: () => !isNew },
     ],
     submit: async (v) => {
       v.max_body = Number(v.max_body) || 64;
+      v.cache_ttl = Number(v.cache_ttl) || 0;
+      v.auth_user = (v.auth_user || '').trim(); v.auth_password = v.auth_user ? v.auth_password || '' : '';
+      v.php_memory = Number(v.php_memory) || 0; v.php_max_exec = Number(v.php_max_exec) || 0; v.php_profile = v.php_profile || '';
       if (['apache', 'openlitespeed'].includes(v.mode)) { v.backend = v.mode; v.mode = 'php'; } else v.backend = '';
       if (v.mode === 'php' && !meta.php.includes(v.php)) toast("Installing PHP " + v.php + " — this may take a few minutes…");
       if (v.backend === 'apache' && !meta.apache) toast("Installing Apache…");
@@ -303,12 +327,13 @@ page('sites', {
       columns: [
         { t: "Domain", r: (r) => `<div class="site-name">${h(r.unicode)}${def.site === r.site.domain ? " <span class=\"tag acc\" title=\"Opens for the server IP address and names without a website\">default</span>" : ''}<small>${h((r.site.aliases || []).join(', '))}</small></div>` },
         { t: "Owner", r: (r) => h(r.site.user), cls: 'hide-sm' },
-        { t: "Mode", r: (r) => r.site.mode === 'php' ? `<span class="tag acc">PHP ${h(r.site.php)}</span> <span class="tag">${(r.site.backend === 'openlitespeed' ? 'OpenLiteSpeed' : r.site.backend === 'apache' ? 'Apache' : 'nginx') + (r.web_version ? ' ' + h(r.web_version) : '')}</span>` : (r.site.mode === 'proxy' ? "<span class=\"tag\">proxy</span>" : "<span class=\"tag\">static</span>") + ` <span class="tag">nginx${r.web_version ? ' ' + h(r.web_version) : ''}</span>` },
+        { t: "Mode", r: (r) => r.site.mode === 'php' ? `<span class="tag acc">PHP ${h(r.site.php)}</span> <span class="tag">${(r.site.backend === 'openlitespeed' ? 'OpenLiteSpeed' : r.site.backend === 'apache' ? 'Apache' : 'nginx') + (r.web_version ? ' ' + h(r.web_version) : '')}</span>${r.site.cache_ttl > 0 ? " <span class=\"tag ok\">cache</span>" : ''}` : (r.site.mode === 'proxy' ? "<span class=\"tag\">proxy</span>" : "<span class=\"tag\">static</span>") + ` <span class="tag">nginx${r.web_version ? ' ' + h(r.web_version) : ''}</span>` },
         { t: 'SSL', r: (r) => { if (!r.site.ssl) return r.site.auto_ssl ? "<span class=\"tag acc\" title=\"Issued automatically once the domain points to the server\">auto: awaiting DNS</span>" : "<span class=\"tag\">none</span>"; const d = Math.floor((new Date(r.ssl_expires) - Date.now()) / 864e5); return `<span class="ssl-cell"><span class="tag ${d < 14 ? 'warn' : 'ok'}">${icon('lock')} ${d} days</span>${r.site.auto_ssl ? "<span class=\"tag\">auto</span>" : ''}</span>`; } },
         { t: "Status", r: (r) => r.site.suspended ? "<span class=\"tag err\">disabled</span>" : "<span class=\"tag ok\">running</span>", cls: 'hide-sm' },
       ],
       onRow: (r) => siteForm(r.site),
       actions: (r) => [
+        r.site.cache_ttl > 0 && { i: 'refresh', t: "Clear cache", fn: async () => { try { const x = await api('sites.cache.purge', { domain: r.site.domain }); toast("Cache cleared: " + fmtBytes(x.freed || 0), 'ok'); } catch (e) { fail(e); } } },
         { i: 'external', t: "Open site", fn: () => window.open((r.site.ssl ? 'https://' : 'http://') + r.site.domain, '_blank') },
         { i: 'folder', t: "Site files", fn: () => go('files', { path: r.site.root }) },
         { i: 'code', t: "Custom nginx rules", fn: () => nginxCustom(r.site.domain) },
@@ -331,7 +356,7 @@ async function siteTemplates() {
   const d = await api('site.templates.list');
   const en = window.PanelLanguage?.language === 'en';
   const name = (x) => (en && x.name_en) || x.name, desc = (x) => (en && x.desc_en) || x.desc;
-  const m = modal(`<h3>Site templates</h3><p class="muted">A template is a ready set of nginx rules for a type of site. The panel keeps the base (ports, SSL, protection, PHP, closed service files) and the template only adds rules. Built-in templates cannot be changed, but you can copy them as your own. You can use these variables in the rules: ${d.vars.map((v) => '<code>' + h(v) + '</code>').join(' ')}.</p><div data-t></div><div class="btns"><button class="btn primary" data-new>Create a template</button><button class="btn" data-close>Close</button></div>`, { wide: true });
+  const m = modal(`<h3>Site templates</h3><p class="muted">A template is a ready set of nginx rules for a type of site. The panel keeps the base (ports, SSL, protection, PHP, closed service files) and the template only adds rules. Built-in templates cannot be changed, but you can copy them as your own. You can use these variables in the rules: ${d.vars.map((v) => '<code>' + h(v) + '</code>').join(' ')}.</p><div data-t></div><div class="panel" style="margin-top:14px" data-lib></div><div class="btns"><button class="btn primary" data-new>Create a template</button><button class="btn" data-close>Close</button></div>`, { wide: true });
   const edit = (x, copy) => { m.close(); openForm({
     title: x && !copy ? "Template: " + name(x) : "New template", ok: "Save", wide: true,
     fields: [
@@ -354,16 +379,23 @@ async function siteTemplates() {
   table($('[data-t]', m.el), {
     rows: d.templates,
     columns: [
-      { t: "Name", r: (x) => `<b>${h(name(x))}</b> ${x.builtin ? "<span class=\"tag\">built-in</span>" : ''}<br><small class="muted">${h(desc(x))}</small>` },
+      { t: "Name", r: (x) => `<b>${h(name(x))}</b> ${x.builtin ? "<span class=\"tag\">built-in</span>" : x.library ? "<span class=\"tag acc\">from the library</span>" : ''}<br><small class="muted">${h(desc(x))}</small>` },
       { t: "Sites", r: (x) => x.sites || '—', cls: 'nowrap' },
     ],
     actions: (x) => [
       x.rules && { i: 'search', t: "How it looks on a site", fn: () => preview(x) },
       x.rules && { i: 'copy', t: "Copy as your own", fn: () => edit(x, true) },
-      !x.builtin && { i: 'edit', t: "Edit", fn: () => edit(x, false) },
-      !x.builtin && { i: 'trash', t: "Delete", danger: true, fn: async () => { if (!(await confirmBox("Delete the template?", h(name(x)) + " will be deleted."))) return; try { await api('site.templates.delete', { id: x.id }); m.close(); siteTemplates(); } catch (e) { fail(e); } } },
+      !x.builtin && !x.library && { i: 'edit', t: "Edit", fn: () => edit(x, false) },
+      !x.builtin && !x.library && { i: 'trash', t: "Delete", danger: true, fn: async () => { if (!(await confirmBox("Delete the template?", h(name(x)) + " will be deleted."))) return; try { await api('site.templates.delete', { id: x.id }); m.close(); siteTemplates(); } catch (e) { fail(e); } } },
     ],
   });
+  const lb = d.library || {};
+  const box = $('[data-lib]', m.el);
+  box.innerHTML = `<p><b>Template library</b> ${lb.version ? `· version ${h(lb.version)} from ${h(lb.released)}, templates: ${h(lb.count)}` : "· not downloaded yet"}</p>
+    <p class="muted">${lb.checked ? `Last check: ${fmtDate(lb.checked)}.` : "Updates have not been checked yet."} Source: ${h(lb.source || 'GitHub')} (fallback: itrupanel.com). The pack is signed with the ITRUPANEL release key; the panel accepts only signed and newer packs.</p>${lb.error ? `<p class="err">The last update failed: ${h(lb.error)}</p>` : ''}
+    <div class="toolbar"><button class="btn" data-lib-update>${icon('refresh')}Update the library</button><label class="check"><input type="checkbox" data-lib-auto ${lb.auto ? 'checked' : ''}><span>Update automatically once a day</span></label></div>`;
+  $('[data-lib-update]', box).onclick = async () => { try { const r = await api('site.templates.library.update'); toast(r.info, 'ok'); m.close(); siteTemplates(); } catch (e) { fail(e); m.close(); siteTemplates(); } };
+  $('[data-lib-auto]', box).onchange = async (e) => { try { await api('site.templates.library.settings', { auto: e.target.checked }); toast("Saved", 'ok'); } catch (er) { fail(er); e.target.checked = !e.target.checked; } };
   $('[data-new]', m.el).onclick = () => edit(null, false);
 }
 window.siteTemplates = siteTemplates;

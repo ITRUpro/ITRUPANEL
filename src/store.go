@@ -45,7 +45,12 @@ type Site struct {
 	TryIndex      bool         `json:"try_index"` // try_files на index.php (ЧПУ)
 	AutoSSL       bool         `json:"auto_ssl"`  // выпускать Let's Encrypt автоматически
 	Suspended     bool         `json:"suspended"`
-	Template      string       `json:"template,omitempty"` // шаблон правил nginx ("" — стандартный)
+	Template      string       `json:"template,omitempty"`     // шаблон правил nginx ("" — стандартный)
+	CacheTTL      int          `json:"cache_ttl,omitempty"`    // кэш страниц nginx, минуты; 0 — выключен
+	Guard         SiteGuard    `json:"guard,omitempty"`        // защита сайта (site_guard.go)
+	PHPProfile    string       `json:"php_profile,omitempty"`  // нагрузка на PHP: "" — обычная, eco, high
+	PHPMemory     int          `json:"php_memory,omitempty"`   // memory_limit сайта, МБ; 0 — по умолчанию PHP
+	PHPMaxExec    int          `json:"php_max_exec,omitempty"` // max_execution_time сайта, секунды; 0 — по умолчанию PHP
 	Created       time.Time    `json:"created"`
 }
 
@@ -143,7 +148,11 @@ type Settings struct {
 	BackupKeep          int            `json:"backup_keep"`
 	BackupHour          int            `json:"backup_hour"`
 	DefaultPHP          string         `json:"default_php"`
-	RecycleOff          bool           `json:"recycle_off,omitempty"`    // корзина менеджера файлов выключена
+	RecycleOff          bool           `json:"recycle_off,omitempty"`         // корзина менеджера файлов выключена
+	NoTemplateLibrary   bool           `json:"no_template_library,omitempty"` // автообновление библиотеки шаблонов выключено
+	TemplateLibChecked  time.Time      `json:"template_lib_checked,omitempty"`
+	TemplateLibUpdated  time.Time      `json:"template_lib_updated,omitempty"`
+	TemplateLibError    string         `json:"template_lib_error,omitempty"`
 	SiteTemplates       []SiteTemplate `json:"site_templates,omitempty"` // свои шаблоны сайтов
 	DefaultSite         string         `json:"default_site,omitempty"`   // "" — страница «Сайт не найден», "-" — закрыть соединение, иначе домен
 	BackupTarget        string         `json:"backup_target"`            // local | ftp | both | s3 | webdav | dropbox | gdrive (и local_… для «здесь и в облаке»)

@@ -436,6 +436,7 @@ func schedulerLoop() {
 			avAutoScan(now)
 			avAutoUpdateDB(now)
 			avAutoUpdateRules(now)
+			tplLibAutoUpdate(now)
 		}
 		panelAutoUpdateTick(now)
 		os.MkdirAll(P(sockDir), 0755)

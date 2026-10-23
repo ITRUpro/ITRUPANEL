@@ -184,6 +184,7 @@ func ensureOLSJob(job *Job) error {
 			return err
 		}
 		olsRestoreAliasUnit()
+		olsInstallUnit()
 		if _, err := run("systemctl", "daemon-reload"); err != nil {
 			return err
 		}
@@ -210,6 +211,22 @@ func olsRunConfig(conf string) error {
 		}
 	}
 	return service("restart", "lsws")
+}
+
+// olsInstallUnit ставит юнит systemd из поставки OpenLiteSpeed, если пакет его не положил (Ubuntu 24.04,
+// пакет 1.9.x): после этого служба называется lshttpd, а без юнита «systemctl enable» отвечает, что файла нет.
+func olsInstallUnit() {
+	if cfg.Dry || fileExists("/etc/systemd/system/lshttpd.service") || fileExists("/etc/systemd/system/lsws.service") {
+		return
+	}
+	for _, dir := range []string{"/run/systemd/system", "/usr/local/lib/systemd/system", "/usr/lib/systemd/system", "/lib/systemd/system"} {
+		if fileExists(dir+"/lshttpd.service") || fileExists(dir+"/lsws.service") {
+			return
+		}
+	}
+	if unit := readFile(olsRoot + "/admin/misc/lshttpd.service"); strings.Contains(unit, "lswsctrl") {
+		writeFile("/etc/systemd/system/lshttpd.service", []byte(unit), 0644)
+	}
 }
 
 // olsRestoreAliasUnit возвращает lsws.service как ссылку на lshttpd.service, если вместо

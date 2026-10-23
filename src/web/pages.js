@@ -239,14 +239,28 @@ async function siteForm(edit) {
   openForm({
     title: isNew ? 'Создать сайт' : 'Сайт ' + toU(s.domain),
     ok: isNew ? 'Создать' : 'Сохранить',
+    onChange: (v, name) => {
+      if (name !== 'kind') return;
+      const k = (meta.kinds || []).find((x) => x.id === v.kind);
+      if (!k) return;
+      v.mode = k.mode; v.template = k.template || ''; v.try_index = !!k.try_index;
+      if (k.index) v.index = k.index;
+    },
     fields: [
       { name: 'domain', label: 'Домен', value: s.domain ? toU(s.domain) : '', required: true, readonly: !isNew, placeholder: 'example.ru', hint: isNew ? 'Можно кириллицей: пример.рф' : '' },
       { name: 'add_www', label: 'Добавить www-алиас', type: 'checkbox', value: isNew, show: () => isNew },
       { name: 'aliases', label: 'Алиасы (через пробел)', value: (s.aliases || []).map(toU).join(' '), placeholder: 'www.example.ru shop.example.ru', hint: 'Оставьте поле пустым, чтобы удалить все алиасы.' },
       { name: 'user', label: 'Владелец (системный пользователь)', type: 'select', options: users, value: '', show: () => isNew },
+      { name: 'kind', label: 'Что за сайт?', type: 'select', value: 'php', show: () => isNew, options: (meta.kinds || []).map((k) => [k.id, (window.PanelLanguage?.language === 'en' && k.name_en) || k.name]) },
+      { type: 'html', show: () => isNew, html: (v) => { const k = (meta.kinds || []).find((x) => x.id === v.kind); return k ? `<p class="hint">${h((window.PanelLanguage?.language === 'en' && k.desc_en) || k.desc)}</p>` : ''; } },
       { name: 'mode', label: 'Режим работы', type: 'seg', value: s.mode === 'php' && ['apache', 'openlitespeed'].includes(s.backend) ? s.backend : (s.mode || 'php'), options: [['php', 'nginx + PHP-FPM'], ['apache', 'nginx + Apache'], ['openlitespeed', 'nginx + OpenLiteSpeed'], ['static', 'Только статика'], ['proxy', 'Прокси']],
         hint: 'Apache поддерживает .htaccess; OpenLiteSpeed — правила Rewrite в .htaccess. Во всех режимах PHP работает через PHP-FPM. OpenLiteSpeed устанавливается при первом выборе. После изменения .htaccess перезапустите OpenLiteSpeed в разделе «Информация о сервере».' },
       { name: 'php', label: 'Версия PHP', type: 'select', options: php, value: s.php || meta.default_php || '8.3', show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode), hint: 'Если версия не установлена, панель установит её при сохранении (2–5 минут). <a href="#/php">Все версии PHP</a>' },
+      { name: 'php_profile', label: 'Нагрузка на PHP', type: 'select', value: s.php_profile || '', show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode),
+        options: (meta.php_profiles || []).map((x) => [x.id, ((window.PanelLanguage?.language === 'en' && x.name_en) || x.name) + ' — ' + x.summary]),
+        hint: 'Сколько процессов PHP держит сайт. «Экономная» подойдёт слабому серверу, «Высокая нагрузка» — посещаемому сайту или магазину; число процессов панель считает по памяти сервера. Если на сервере много сайтов, не ставьте высокую нагрузку всем.' },
+      { name: 'php_memory', label: 'Память на скрипт PHP, МБ (0 — по умолчанию)', type: 'number', value: s.php_memory || 0, show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode), hint: 'Для тяжёлых сайтов (например, WooCommerce или Битрикс) обычно нужно 256–512 МБ.' },
+      { name: 'php_max_exec', label: 'Время работы скрипта PHP, секунд (0 — по умолчанию)', type: 'number', value: s.php_max_exec || 0, show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode) },
       { name: 'try_index', label: 'Все запросы на index.php (ЧПУ)', type: 'checkbox', value: s.try_index ?? true, show: (v) => v.mode === 'php', hint: 'Нужно для Laravel, X3 и большинства CMS. В режиме Apache это делает .htaccess.' },
       { name: 'template', label: 'Шаблон сайта', type: 'select', options: (meta.templates || []).map((t) => [t.id, (window.PanelLanguage?.language === 'en' && t.name_en) || t.name]), value: s.template || '', hint: 'Готовый набор правил nginx под тип сайта (WordPress, Laravel, Joomla, SPA…). Свои шаблоны и описания — кнопка «Шаблоны» на странице сайтов.' },
       { name: 'proxy_to', label: 'Адрес приложения', value: s.proxy_to || '', placeholder: 'http://127.0.0.1:3000', show: (v) => v.mode === 'proxy' },
@@ -259,13 +273,23 @@ async function siteForm(edit) {
       { type: 'section', label: 'Дополнительно' },
       { name: 'www_redirect', label: 'Перенаправление www', type: 'select', value: s.www_redirect ?? (isNew ? 'from_www' : ''), options: [['', 'Нет'], ['from_www', 'www.домен → домен'], ['to_www', 'домен → www.домен']] },
       { name: 'gzip', label: 'Сжатие gzip', type: 'checkbox', value: s.gzip ?? true },
+      { name: 'cache_ttl', label: 'Кэш страниц (ускорение сайта)', type: 'select', value: String(s.cache_ttl || 0), show: (v) => v.mode !== 'static', options: [['0', 'Выключен'], ['1', '1 минута'], ['5', '5 минут'], ['10', '10 минут'], ['30', '30 минут'], ['60', '1 час'], ['360', '6 часов'], ['1440', '1 сутки']], hint: 'Готовые страницы отдаются из кэша nginx без запуска PHP, сайт работает заметно быстрее. Не кэшируются запросы с данными и параметрами в адресе, вошедшие пользователи, админки и корзины. Кнопка «Очистить кэш» есть в строке сайта. Для своих приложений с личными страницами без входа через cookie выбирайте срок осторожно.' },
       { name: 'static_expires', label: 'Кэширование статики в браузере', type: 'select', value: s.static_expires ?? (isNew ? '30d' : ''), options: [['', 'Не задавать'], ['1d', '1 день'], ['7d', '7 дней'], ['30d', '30 дней'], ['365d', '1 год']], show: (v) => v.mode !== 'proxy' },
+      { type: 'section', label: 'Защита сайта' },
+      { name: 'guard_headers', label: 'Заголовки безопасности', type: 'checkbox', value: !!(s.guard || {}).headers, hint: 'Браузер не даст встроить сайт в чужую страницу и не будет «угадывать» тип файлов; при HTTPS добавляется HSTS.' },
+      { name: 'guard_hotlink', label: 'Защита картинок и видео от копирования (hotlink)', type: 'checkbox', value: !!(s.guard || {}).hotlink, hint: 'Файлы не показываются на чужих сайтах и не тратят ваш трафик. Поисковики, Яндекс, Google, соцсети разрешены.' },
+      { name: 'auth_user', label: 'Пароль на весь сайт: логин', value: (s.guard || {}).auth_user || '', placeholder: 'пусто — без пароля', hint: 'Сайт откроется только после ввода логина и пароля (проверка Let’s Encrypt не затрагивается). Удобно для сайта в разработке.' },
+      { name: 'auth_password', label: 'Пароль на весь сайт: пароль', type: 'password', value: '', gen: true, show: (v) => !!(v.auth_user || '').trim(), hint: ((s.guard || {}).auth_set ? 'Пароль уже задан: оставьте поле пустым, чтобы не менять.' : 'Не короче 8 знаков.') },
+      { name: 'guard_admin_ips', label: 'Админка только с этих адресов', type: 'textarea', rows: 3, value: ((s.guard || {}).admin_ips || []).join('\n'), placeholder: '203.0.113.5\n198.51.100.0/24', hint: 'По одному адресу или сети в строке. Закрываются /wp-admin, /wp-login.php, /administrator, /bitrix/admin, /admin, /manager, /phpmyadmin для всех остальных. Пусто — без ограничения. Свой адрес добавьте, иначе потеряете доступ.' },
       { name: 'max_body', label: 'Максимальный размер загрузки, МБ', type: 'number', value: s.max_body || 64 },
       { name: 'index', label: 'Индексные файлы', value: s.index || 'index.php index.html', show: (v) => v.mode !== 'proxy' },
       { name: 'root', label: 'Корневая папка', value: s.root || '', placeholder: 'по умолчанию /var/www/<пользователь>/data/www/<домен>', show: () => !isNew },
     ],
     submit: async (v) => {
       v.max_body = Number(v.max_body) || 64;
+      v.cache_ttl = Number(v.cache_ttl) || 0;
+      v.auth_user = (v.auth_user || '').trim(); v.auth_password = v.auth_user ? v.auth_password || '' : '';
+      v.php_memory = Number(v.php_memory) || 0; v.php_max_exec = Number(v.php_max_exec) || 0; v.php_profile = v.php_profile || '';
       if (['apache', 'openlitespeed'].includes(v.mode)) { v.backend = v.mode; v.mode = 'php'; } else v.backend = '';
       if (v.mode === 'php' && !meta.php.includes(v.php)) toast('Устанавливаю PHP ' + v.php + ' — это займёт несколько минут…');
       if (v.backend === 'apache' && !meta.apache) toast('Устанавливаю Apache…');
@@ -303,12 +327,13 @@ page('sites', {
       columns: [
         { t: 'Домен', r: (r) => `<div class="site-name">${h(r.unicode)}${def.site === r.site.domain ? ' <span class="tag acc" title="Открывается по IP-адресу сервера и по именам без сайта">по умолчанию</span>' : ''}<small>${h((r.site.aliases || []).join(', '))}</small></div>` },
         { t: 'Владелец', r: (r) => h(r.site.user), cls: 'hide-sm' },
-        { t: 'Режим', r: (r) => r.site.mode === 'php' ? `<span class="tag acc">PHP ${h(r.site.php)}</span> <span class="tag">${(r.site.backend === 'openlitespeed' ? 'OpenLiteSpeed' : r.site.backend === 'apache' ? 'Apache' : 'nginx') + (r.web_version ? ' ' + h(r.web_version) : '')}</span>` : (r.site.mode === 'proxy' ? '<span class="tag">прокси</span>' : '<span class="tag">статика</span>') + ` <span class="tag">nginx${r.web_version ? ' ' + h(r.web_version) : ''}</span>` },
+        { t: 'Режим', r: (r) => r.site.mode === 'php' ? `<span class="tag acc">PHP ${h(r.site.php)}</span> <span class="tag">${(r.site.backend === 'openlitespeed' ? 'OpenLiteSpeed' : r.site.backend === 'apache' ? 'Apache' : 'nginx') + (r.web_version ? ' ' + h(r.web_version) : '')}</span>${r.site.cache_ttl > 0 ? ' <span class="tag ok">кэш</span>' : ''}` : (r.site.mode === 'proxy' ? '<span class="tag">прокси</span>' : '<span class="tag">статика</span>') + ` <span class="tag">nginx${r.web_version ? ' ' + h(r.web_version) : ''}</span>` },
         { t: 'SSL', r: (r) => { if (!r.site.ssl) return r.site.auto_ssl ? '<span class="tag acc" title="Выпустится автоматически, когда домен укажет на сервер">авто: ждёт DNS</span>' : '<span class="tag">нет</span>'; const d = Math.floor((new Date(r.ssl_expires) - Date.now()) / 864e5); return `<span class="ssl-cell"><span class="tag ${d < 14 ? 'warn' : 'ok'}">${icon('lock')} ${d} дн.</span>${r.site.auto_ssl ? '<span class="tag">авто</span>' : ''}</span>`; } },
         { t: 'Состояние', r: (r) => r.site.suspended ? '<span class="tag err">выключен</span>' : '<span class="tag ok">работает</span>', cls: 'hide-sm' },
       ],
       onRow: (r) => siteForm(r.site),
       actions: (r) => [
+        r.site.cache_ttl > 0 && { i: 'refresh', t: 'Очистить кэш', fn: async () => { try { const x = await api('sites.cache.purge', { domain: r.site.domain }); toast('Кэш очищен: ' + fmtBytes(x.freed || 0), 'ok'); } catch (e) { fail(e); } } },
         { i: 'external', t: 'Открыть сайт', fn: () => window.open((r.site.ssl ? 'https://' : 'http://') + r.site.domain, '_blank') },
         { i: 'folder', t: 'Файлы сайта', fn: () => go('files', { path: r.site.root }) },
         { i: 'code', t: 'Свои правила nginx', fn: () => nginxCustom(r.site.domain) },
@@ -331,7 +356,7 @@ async function siteTemplates() {
   const d = await api('site.templates.list');
   const en = window.PanelLanguage?.language === 'en';
   const name = (x) => (en && x.name_en) || x.name, desc = (x) => (en && x.desc_en) || x.desc;
-  const m = modal(`<h3>Шаблоны сайтов</h3><p class="muted">Шаблон — готовый набор правил nginx под тип сайта. Основу (порты, SSL, защиту, PHP, закрытые служебные файлы) панель оставляет за собой, шаблон только добавляет правила. Встроенные шаблоны изменить нельзя, но их можно скопировать как свои. В правилах можно использовать переменные: ${d.vars.map((v) => '<code>' + h(v) + '</code>').join(' ')}.</p><div data-t></div><div class="btns"><button class="btn primary" data-new>Создать шаблон</button><button class="btn" data-close>Закрыть</button></div>`, { wide: true });
+  const m = modal(`<h3>Шаблоны сайтов</h3><p class="muted">Шаблон — готовый набор правил nginx под тип сайта. Основу (порты, SSL, защиту, PHP, закрытые служебные файлы) панель оставляет за собой, шаблон только добавляет правила. Встроенные шаблоны изменить нельзя, но их можно скопировать как свои. В правилах можно использовать переменные: ${d.vars.map((v) => '<code>' + h(v) + '</code>').join(' ')}.</p><div data-t></div><div class="panel" style="margin-top:14px" data-lib></div><div class="btns"><button class="btn primary" data-new>Создать шаблон</button><button class="btn" data-close>Закрыть</button></div>`, { wide: true });
   const edit = (x, copy) => { m.close(); openForm({
     title: x && !copy ? 'Шаблон: ' + name(x) : 'Новый шаблон', ok: 'Сохранить', wide: true,
     fields: [
@@ -354,16 +379,23 @@ async function siteTemplates() {
   table($('[data-t]', m.el), {
     rows: d.templates,
     columns: [
-      { t: 'Название', r: (x) => `<b>${h(name(x))}</b> ${x.builtin ? '<span class="tag">встроенный</span>' : ''}<br><small class="muted">${h(desc(x))}</small>` },
+      { t: 'Название', r: (x) => `<b>${h(name(x))}</b> ${x.builtin ? '<span class="tag">встроенный</span>' : x.library ? '<span class="tag acc">из библиотеки</span>' : ''}<br><small class="muted">${h(desc(x))}</small>` },
       { t: 'Сайтов', r: (x) => x.sites || '—', cls: 'nowrap' },
     ],
     actions: (x) => [
       x.rules && { i: 'search', t: 'Как выглядит на сайте', fn: () => preview(x) },
       x.rules && { i: 'copy', t: 'Копировать как свой', fn: () => edit(x, true) },
-      !x.builtin && { i: 'edit', t: 'Изменить', fn: () => edit(x, false) },
-      !x.builtin && { i: 'trash', t: 'Удалить', danger: true, fn: async () => { if (!(await confirmBox('Удалить шаблон?', h(name(x)) + ' будет удалён.'))) return; try { await api('site.templates.delete', { id: x.id }); m.close(); siteTemplates(); } catch (e) { fail(e); } } },
+      !x.builtin && !x.library && { i: 'edit', t: 'Изменить', fn: () => edit(x, false) },
+      !x.builtin && !x.library && { i: 'trash', t: 'Удалить', danger: true, fn: async () => { if (!(await confirmBox('Удалить шаблон?', h(name(x)) + ' будет удалён.'))) return; try { await api('site.templates.delete', { id: x.id }); m.close(); siteTemplates(); } catch (e) { fail(e); } } },
     ],
   });
+  const lb = d.library || {};
+  const box = $('[data-lib]', m.el);
+  box.innerHTML = `<p><b>Библиотека шаблонов</b> ${lb.version ? `· версия ${h(lb.version)} от ${h(lb.released)}, шаблонов: ${h(lb.count)}` : '· ещё не загружена'}</p>
+    <p class="muted">${lb.checked ? `Последняя проверка: ${fmtDate(lb.checked)}.` : 'Обновления ещё не проверялись.'} Источник: ${h(lb.source || 'GitHub')} (резерв — itrupanel.com). Набор подписан ключом выпусков ITRUPANEL; панель принимает только подписанные и более новые наборы.</p>${lb.error ? `<p class="err">Последнее обновление не удалось: ${h(lb.error)}</p>` : ''}
+    <div class="toolbar"><button class="btn" data-lib-update>${icon('refresh')}Обновить библиотеку</button><label class="check"><input type="checkbox" data-lib-auto ${lb.auto ? 'checked' : ''}><span>Обновлять автоматически раз в сутки</span></label></div>`;
+  $('[data-lib-update]', box).onclick = async () => { try { const r = await api('site.templates.library.update'); toast(r.info, 'ok'); m.close(); siteTemplates(); } catch (e) { fail(e); m.close(); siteTemplates(); } };
+  $('[data-lib-auto]', box).onchange = async (e) => { try { await api('site.templates.library.settings', { auto: e.target.checked }); toast('Сохранено', 'ok'); } catch (er) { fail(er); e.target.checked = !e.target.checked; } };
   $('[data-new]', m.el).onclick = () => edit(null, false);
 }
 window.siteTemplates = siteTemplates;

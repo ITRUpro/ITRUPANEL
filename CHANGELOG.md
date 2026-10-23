@@ -2,6 +2,16 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.18
+
+- **Site type at creation**: the question "What kind of site?" (regular PHP, WordPress, Laravel / Symfony, Joomla, 1C-Bitrix, single-page application, static site, application behind a proxy) sets the mode, template, pretty links and the root folder (`public` for Laravel)
+- **Page cache**: choose a period from 1 minute to a day to turn on the nginx cache (FastCGI cache for PHP-FPM, proxy cache for Apache, OpenLiteSpeed and applications); requests with data, admin areas, logged-in users and carts are not cached; a **Clear cache** button in the site row
+- **PHP load profiles** (economical, normal, high load; the number of processes is calculated from the server memory) and PHP memory and run time per site
+- **Site protection with checkboxes**: security headers, protection of images and video from hotlinking, a password for the whole site (bcrypt; the Let's Encrypt check is not affected) and the admin area (`/wp-admin`, `/wp-login.php`, `/administrator`, `/bitrix/admin`, `/admin`, `/phpmyadmin`) only from chosen IP addresses or networks
+- **Template library**: a signed set of ready templates (Drupal, OpenCart, MediaWiki, phpBB, MODX, PHP frameworks) in `templates/library.json` is checked once a day (GitHub, fallback itrupanel.com) and applied without a new panel release; the rules are validated and forbidden directives are rejected
+- fixed: a site with the root in a subfolder (`public` for Laravel) was not served because the site folder belonged to root; PHP-FPM refused to start after several sites were created within seconds (systemd start limit); OpenLiteSpeed did not start on Ubuntu 24.04 (the package did not install its systemd unit)
+- tested with the real panel on Debian 12 and 13, Ubuntu 24.04, Rocky Linux 9 and AlmaLinux 10 (with the real nginx, PHP-FPM, Apache and OpenLiteSpeed)
+
 ## 0.2.17
 
 - minor bug fixes (the site templates window closes when you open a form from it; a site template that does not suit the site mode is refused with an explanation)
