@@ -1,8 +1,3 @@
 [
-  "Websites: “What kind of site?” at creation (WordPress, Laravel, Joomla, Bitrix, SPA and others) sets the mode, template and root folder for you.",
-  "Websites: the nginx page cache with one choice of period and a Clear cache button; works with PHP-FPM, Apache, OpenLiteSpeed and applications.",
-  "Websites: PHP load profiles (economical, normal, high), PHP memory and run time for a site.",
-  "Websites: protection with checkboxes — security headers, protection of images from hotlinking, a site password, admin area only from chosen IPs.",
-  "Site templates: a template library (Drupal, OpenCart, MediaWiki, phpBB, MODX and others) updated from GitHub, and a check of the template against the site mode.",
   "Minor bug fixes."
 ]

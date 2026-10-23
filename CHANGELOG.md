@@ -2,6 +2,10 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.19
+
+- file manager: a click or double click opens any file in the editor, except obvious binaries (images, archives, video, office documents, fonts, programs); before, files with an unfamiliar extension such as `config.php.new` were downloaded instead
+
 ## 0.2.18
 
 - **Site type at creation**: the question "What kind of site?" (regular PHP, WordPress, Laravel / Symfony, Joomla, 1C-Bitrix, single-page application, static site, application behind a proxy) sets the mode, template, pretty links and the root folder (`public` for Laravel)

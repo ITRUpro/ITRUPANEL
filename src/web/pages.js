@@ -1245,7 +1245,9 @@ function folderDestination({ title, path, action, select }) {
   return f;
 }
 
-const TEXT_EXT = /\.(php|html?|css|js|mjs|json|txt|md|xml|ya?ml|ini|conf|htaccess|env|sh|py|rb|go|sql|csv|log|svg|twig|tpl|vue|ts|jsx|tsx|lock|gitignore|example)$/i;
+// Двойной щелчок открывает редактор у любого файла, кроме заведомо двоичных (картинки, архивы, видео, документы Office, шрифты, программы);
+// если файл окажется не текстовым или больше 3 МБ, сервер скажет об этом, и он скачается.
+const BINARY_EXT = /\.(png|jpe?g|gif|webp|avif|ico|bmp|tiff?|heic|psd|zip|gz|tgz|bz2|xz|7z|rar|tar|zst|mp3|mp4|m4a|m4v|mov|avi|mkv|webm|wav|ogg|flac|pdf|docx?|xlsx?|pptx?|odt|ods|odp|woff2?|ttf|otf|eot|exe|dll|so|bin|iso|dmg|class|jar|phar|sqlite3?|db|mo)$/i;
 // Корзина менеджера файлов: восстановление, удаление навсегда, очистка и переключатель.
 async function recycleBin(onChange) {
   const m = modal(`<div class="backup-settings-head"><h3>Корзина</h3><button class="btn" data-close>Закрыть</button></div><div data-bin><div class="loading"><span class="spin"></span></div></div>`, { wide: true });
@@ -1327,7 +1329,7 @@ page('files', {
       upd();
     };
     const openFile = async (p, r) => {
-      if (!TEXT_EXT.test(p) && r.size > 0 && !/^[^.]+$/.test(r.name)) { location.href = '/api/files/download?path=' + encodeURIComponent(p); return; }
+      if (BINARY_EXT.test(p) && r.size > 0) { location.href = '/api/files/download?path=' + encodeURIComponent(p); return; }
       try {
         const d = await api('files.read', { path: p });
         let ed = null;
@@ -1386,7 +1388,7 @@ page('files', {
       const many = sel.size > 1;
       const archive = /\.(zip|tar|tgz|tar\.gz|tar\.bz2|tar\.xz|gz)$/i.test(r.name);
       const items = [
-        !many && { t: r.dir ? 'Открыть' : (TEXT_EXT.test(r.name) ? 'Редактировать' : 'Открыть'), i: r.dir ? 'folder' : 'edit', fn: () => (r.dir ? load(full(r.name)) : openFile(full(r.name), r)) },
+        !many && { t: r.dir ? 'Открыть' : (BINARY_EXT.test(r.name) ? 'Открыть' : 'Редактировать'), i: r.dir ? 'folder' : 'edit', fn: () => (r.dir ? load(full(r.name)) : openFile(full(r.name), r)) },
         !many && !r.dir && { t: 'Скачать', i: 'download', fn: acts.download },
         '-',
         { t: 'Копировать', i: 'copy', fn: acts.copy },

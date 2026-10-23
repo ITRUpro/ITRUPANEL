@@ -3,7 +3,7 @@
 # ITRUPANEL online installer. Publish this file as /panel/install-itrupanel.sh at itrupanel.com.
 set -euo pipefail
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${PATH:+:$PATH}"
-RELEASE=0.2.18
+RELEASE=0.2.19
 ARCHIVE_SHA256=RELEASE_SHA256_PLACEHOLDER
 BASE_URL=https://itrupanel.com/panel
 fail() { echo "Ошибка: $*" >&2; exit 1; }
