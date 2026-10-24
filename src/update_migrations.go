@@ -84,7 +84,7 @@ func panelMigrations() []updateMigration {
 		}, func() error {
 			// Без установленного PHP phpMyAdmin перенастроить нечем: обновление панели из-за этого не прерывается,
 			// настройка выполнится при следующей установке PHP или phpMyAdmin
-			if fileExists(cfg.Home+"/www/phpmyadmin/index.php") && defaultPHP() != "" {
+			if fileExists(cfg.Home+"/www/phpmyadmin/index.php") && defaultPHP() != "" && phpRunnable() {
 				return installPMA()
 			}
 			return nil
@@ -717,7 +717,11 @@ func runUpdateMigrations(backup string, migrations []updateMigration) error {
 	var services []string
 	candidates := []string{"nginx", "lsws"}
 	for _, v := range phpInstalled() {
-		candidates = append(candidates, phpService(v))
+		// PHP-FPM, который не запускается (на FreeBSD пакеты бывают собраны для более новой системы), не должен
+		// ломать обновление панели и откат: его службу миграции не перезапускают
+		if phpRunnable() {
+			candidates = append(candidates, phpService(v))
+		}
 	}
 	if store.Mail.Ready {
 		candidates = append(candidates, mailServices(store.Mail)...)

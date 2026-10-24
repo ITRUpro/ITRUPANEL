@@ -2132,5 +2132,5 @@
   "Перейти на эту версию": "Switch to this version",
   "Перейти на PHP": "Switch to PHP",
   "Установленный PHP будет заменён этой версией, все сайты и веб-почта переключатся на неё. Настройки php.ini сохранятся. Сайты не работают несколько минут.": "The installed PHP will be replaced by this version and all websites and webmail will switch to it. The php.ini settings are kept. Websites are unavailable for a few minutes.",
-  "Скачать архив 0.2.23": "Download version 0.2.23"
+  "Скачать архив 0.2.24": "Download version 0.2.24"
 }

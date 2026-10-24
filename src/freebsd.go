@@ -533,3 +533,12 @@ func bsdPHPSwitchAll(j *Job, from, to string) error {
 	jobStage(j, fmt.Sprintf("PHP %s работает; на него переведено сайтов: %d", to, n))
 	return saveChecked()
 }
+
+// phpRunnable — установленный PHP-FPM вообще запускается. На Linux всегда да; на FreeBSD пакеты бывают собраны для
+// более новой версии системы, и тогда php-fpm не стартует («ld-elf.so.1: … version FBSD_… not found»).
+func phpRunnable() bool {
+	if !isBSD() || cfg.Dry {
+		return true
+	}
+	return bsdCheckBinary(bsdFPMBin, "-v") == nil
+}

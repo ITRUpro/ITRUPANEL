@@ -1,5 +1,5 @@
 [
-  "FreeBSD: updating the panel is no longer interrupted and rolled back when PHP is not installed on the server (for example, it was removed before switching to another version).",
-  "FreeBSD: when the packages are built for a newer system release and PHP does not start, the panel says so and shows how to update the system; the installed PHP version is detected more reliably.",
+  "FreeBSD: updating the panel is no longer interrupted or rolled back when PHP-FPM does not start (packages built for a newer system release): the PHP service is left alone during the update.",
+  "Linux: unchanged.",
   "Minor bug fixes."
 ]

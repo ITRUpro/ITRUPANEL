@@ -2,6 +2,11 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.24
+
+- **FreeBSD.** Fixed: the panel update was interrupted and rolled back when PHP-FPM did not start because the FreeBSD packages were built for a newer system release (`ld-elf.so.1: … FBSD_1.9 not found`), including a failing rollback. The update and the rollback now leave the PHP service alone in that case
+- Linux is unchanged (shared version number)
+
 ## 0.2.23
 
 - **FreeBSD only.** Fixed: updating the panel was interrupted and rolled back ("Install PHP first" in the migration log) when PHP was not installed on the server while phpMyAdmin was still there, for example after PHP was removed before switching to another version. Such an update now goes through; phpMyAdmin is reconfigured when PHP is installed again. The same migration is also safe on Linux servers without PHP
