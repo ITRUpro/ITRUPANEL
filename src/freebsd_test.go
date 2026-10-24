@@ -227,3 +227,23 @@ func TestNSDZoneTTLs(t *testing.T) {
 		t.Errorf("запись mail изменилась:\n%s", out)
 	}
 }
+
+func TestBSDPHPSwitchNames(t *testing.T) {
+	re := reBsdSwitchPkg("8.3")
+	for _, n := range []string{"php83", "php83-gd", "php83-pecl-redis", "roundcube-php83", "roundcube-classic-php83"} {
+		if !re.MatchString(n) {
+			t.Errorf("%s должен относиться к PHP 8.3", n)
+		}
+	}
+	for _, n := range []string{"php84", "php830", "php84-gd", "roundcube-php84", "nginx", "phpmyadmin5-php83x"} {
+		if re.MatchString(n) {
+			t.Errorf("%s не относится к PHP 8.3", n)
+		}
+	}
+	if got := bsdPHPMapName("php83-pecl-redis", "8.3", "8.5"); got != "php85-pecl-redis" {
+		t.Errorf("php83-pecl-redis → %s", got)
+	}
+	if got := bsdPHPMapName("roundcube-php83", "8.3", "8.5"); got != "roundcube-php85" {
+		t.Errorf("roundcube-php83 → %s", got)
+	}
+}

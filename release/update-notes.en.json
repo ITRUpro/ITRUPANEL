@@ -1,4 +1,4 @@
 [
-  "FreeBSD 14–15 support (beta): a separate installer and archive; websites on nginx, Apache and PHP-FPM, MariaDB, FTP, SSL, mail, DNS, antivirus, the pf firewall, FTP protection, backups and updating from the panel.",
+  "FreeBSD: in the PHP section the “Switch to this version” button removes the installed PHP and installs the chosen one by itself; websites, webmail, php.ini settings and extensions are carried over.",
   "Minor bug fixes."
 ]

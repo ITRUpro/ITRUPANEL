@@ -1719,7 +1719,8 @@ page('disk', {
 page('php', {
   title: 'PHP',
   async render(view) {
-    head(view, 'PHP', { sub: "Multiple PHP versions simultaneously, independently selected for each site" });
+    const bsdPHP = !!(App.me && App.me.family === 'freebsd');
+    head(view, 'PHP', { sub: bsdPHP ? "On FreeBSD one PHP version runs at a time; switching replaces it for all websites" : "Multiple PHP versions simultaneously, independently selected for each site" });
     const p = panel(view);
     const load = async () => {
       const rows = await api('php.list');
@@ -1737,7 +1738,7 @@ page('php', {
           !r.default && { i: 'check', t: "Set as default version", fn: async () => { await api('php.default', { version: r.version }); load(); } },
           { i: 'refresh', t: "Restart PHP-FPM", fn: async () => { try { await api('php.restart', { version: r.version }); toast("Restarted", 'ok'); load(); } catch (e) { fail(e); } } },
           { i: 'trash', t: "Delete", danger: true, fn: async () => { if (!(await confirmBox("Remove PHP " + r.version + '?', "PHP packages " + r.version + " will be deleted."))) return; try { await api('php.remove', { version: r.version }); load(); } catch (e) { fail(e); } } },
-        ] : [{ i: 'download', t: "Install", label: "Install", fn: async () => { try { await api('php.install', { version: r.version }); toast("PHP installation " + r.version + " started (2–5 minutes)"); load(); } catch (e) { fail(e); } } }],
+        ] : [{ i: 'download', t: bsdPHP && rows.some((x) => x.installed) ? "Switch to this version" : "Install", label: bsdPHP && rows.some((x) => x.installed) ? "Switch to this version" : "Install", fn: async () => { try { if (bsdPHP && rows.some((x) => x.installed) && !(await confirmBox("Switch to PHP " + r.version + '?', "The installed PHP will be replaced by this version and all websites and webmail will switch to it. The php.ini settings are kept. Websites are unavailable for a few minutes."))) return; await api('php.install', { version: r.version }); toast("PHP installation " + r.version + " started (2–5 minutes)"); load(); } catch (e) { fail(e); } } }],
       });
       return rows.some((r) => r.job === 'running');
     };

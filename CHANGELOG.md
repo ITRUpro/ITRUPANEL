@@ -2,6 +2,11 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.22
+
+- **FreeBSD: switching the PHP version.** The PHP section has a **Switch to this version** button: the panel stops PHP-FPM, removes the installed PHP packages, installs the same packages of the chosen version (8.2–8.5), moves all websites, the default version and webmail to it and keeps the `php.ini` settings and the extensions that exist for the new version; if anything fails the previous version is restored. Tested with 8.3 → 8.5 → 8.4 with websites, a PECL extension, Roundcube and phpMyAdmin
+- Linux is unchanged
+
 ## 0.2.21
 
 - **FreeBSD 14 and 15 (beta)** with its own archive (`itrupanel-freebsd-<version>.zip`), installer (`install-freebsd.sh`), update script and online command: `fetch -o install.sh https://itrupanel.com/panel/install-itrupanel-freebsd.sh && sh install.sh`; updating from the panel works through a separately signed `latest-freebsd.json`

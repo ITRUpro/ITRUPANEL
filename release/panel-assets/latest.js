@@ -25,4 +25,16 @@
       });
     })
     .catch(() => {});
+  // FreeBSD обновляется отдельным каналом: ссылка на его архив берётся из latest-freebsd.json
+  fetch('/panel/latest-freebsd.json', { cache: 'no-cache', credentials: 'omit' })
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error('latest-freebsd.json ' + r.status))))
+    .then((env) => {
+      const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(env.payload), (c) => c.charCodeAt(0))));
+      const v = String(payload.version || '');
+      if (!re.test(v)) return;
+      document.querySelectorAll('a[href*="itrupanel-freebsd-"]').forEach((a) => {
+        a.setAttribute('href', (a.getAttribute('href') || '').replace(/itrupanel-freebsd-\d+\.\d+\.\d+\.zip/, 'itrupanel-freebsd-' + v + '.zip'));
+      });
+    })
+    .catch(() => {});
 })();

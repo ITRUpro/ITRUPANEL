@@ -1304,5 +1304,12 @@
   "Антиспам требует Debian, Ubuntu, RHEL-систему с systemd или FreeBSD": "Antispam needs Debian, Ubuntu, a RHEL-family system with systemd, or FreeBSD",
   "Установка Roundcube требует Debian, Ubuntu, RHEL-систему с systemd или FreeBSD": "Roundcube installation needs Debian, Ubuntu, a RHEL-family system with systemd, or FreeBSD",
   "Не удалось установить NSD: %s": "Could not install NSD: %s",
-  "DNS-сервер NSD": "NSD DNS server"
+  "DNS-сервер NSD": "NSD DNS server",
+  "На FreeBSD одновременно работает одна версия PHP, сейчас установлен PHP %s. Чтобы перейти на PHP %s, нажмите «Перейти на эту версию» у неё в разделе «PHP»: все сайты будут переведены на неё.": "Only one PHP version runs at a time on FreeBSD; PHP %s is installed now. To switch to PHP %s, click “Switch to this version” next to it in the PHP section: all websites will be moved to it.",
+  "PHP %s не найден среди установленных пакетов": "PHP %s is not among the installed packages",
+  "В репозитории пакетов FreeBSD нет PHP %s": "The FreeBSD package repository has no PHP %s",
+  "Не удалось загрузить пакеты PHP %s: %s": "Could not download the PHP %s packages: %s",
+  "Не удалось удалить PHP %s: %s": "Could not remove PHP %s: %s",
+  "Не удалось установить PHP %s: %s. Прежняя версия возвращена.": "Could not install PHP %s: %s. The previous version was restored.",
+  "Конфигурация PHP-FPM не прошла проверку: %s": "The PHP-FPM configuration failed the check: %s"
 }

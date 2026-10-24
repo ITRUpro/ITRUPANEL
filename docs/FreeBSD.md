@@ -31,7 +31,7 @@ Websites (nginx + PHP-FPM, nginx + Apache, static, proxy), site templates, page 
 | OpenLiteSpeed | not available (no FreeBSD build) |
 | Docker and Database servers | not available (Docker does not exist for FreeBSD; database servers run in Docker) |
 | ionCube Loader | not available (no FreeBSD loader) |
-| PHP versions | one version at a time, 8.2–8.5 (the FreeBSD packages `php82`…`php85` conflict) |
+| PHP versions | one version at a time, 8.2–8.5 (the FreeBSD packages `php82`…`php85` conflict); the PHP section has a **Switch to this version** button that replaces the installed PHP and moves all websites to the new one |
 | DNS server | NSD instead of BIND: the FreeBSD packages of BIND and Postfix need different versions of lmdb and cannot be installed together; zones and records are the same, records of one set get one TTL |
 | Firewall | pf instead of nftables |
 | Services | rc.d instead of systemd; no per-service memory in monitoring |

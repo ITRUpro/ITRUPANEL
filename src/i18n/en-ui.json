@@ -2120,12 +2120,17 @@
   "Обновить библиотеку": "Update the library",
   "Обновлять автоматически раз в сутки": "Update automatically once a day",
   "Сохранить и закрыть": "Save and close",
-  "Скачать архив 0.2.21": "Download version 0.2.21",
   "Debian 11–13, Ubuntu 22.04 / 24.04 / 26.04, AlmaLinux и Rocky Linux 8–10, CentOS Stream 9–10, RHEL 8–10 и FreeBSD 14–15 (бета, отдельный архив)": "Debian 11–13, Ubuntu 22.04 / 24.04 / 26.04, AlmaLinux and Rocky Linux 8–10, CentOS Stream 9–10, RHEL 8–10 and FreeBSD 14–15 (beta, separate archive)",
   "Архив для FreeBSD (бета)": "FreeBSD archive (beta)",
   "DNS-сервер NSD": "NSD DNS server",
   "DNS-сервер NSD остановлен": "NSD DNS server is stopped",
   "DNS-сервер NSD не установлен": "NSD DNS server is not installed",
   "Установить NSD": "Install NSD",
-  "Устанавливаю NSD…": "Installing NSD…"
+  "Устанавливаю NSD…": "Installing NSD…",
+  "FreeBSD (бета):": "FreeBSD (beta):",
+  "На FreeBSD работает одна версия PHP; переход заменяет её для всех сайтов": "On FreeBSD one PHP version runs at a time; switching replaces it for all websites",
+  "Перейти на эту версию": "Switch to this version",
+  "Перейти на PHP": "Switch to PHP",
+  "Установленный PHP будет заменён этой версией, все сайты и веб-почта переключатся на неё. Настройки php.ini сохранятся. Сайты не работают несколько минут.": "The installed PHP will be replaced by this version and all websites and webmail will switch to it. The php.ini settings are kept. Websites are unavailable for a few minutes.",
+  "Скачать архив 0.2.22": "Download version 0.2.22"
 }

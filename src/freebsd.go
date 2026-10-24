@@ -245,7 +245,7 @@ func bsdPHPPackages(v string) []string {
 // в пакетах FreeBSD версии PHP конфликтуют.
 func bsdPHPInstall(v string) error {
 	if cur := bsdInstalledPHP(); cur != "" && cur != v {
-		return errf("На FreeBSD одновременно работает одна версия PHP. Сейчас установлен PHP %s: сначала удалите его (сайты на нём должны быть переведены или удалены).", cur)
+		return errf("На FreeBSD одновременно работает одна версия PHP, сейчас установлен PHP %s. Чтобы перейти на PHP %s, нажмите «Перейти на эту версию» у неё в разделе «PHP»: все сайты будут переведены на неё.", cur, v)
 	}
 	all := bsdPHPPackages(v)
 	if err := bsdPkgInstall(all...); err != nil {
@@ -369,4 +369,121 @@ func bsdUpdateWorkerAlive(id string) bool {
 		return false
 	}
 	return syscall.Kill(pid, 0) == nil
+}
+
+// ---------- переключение версии PHP ----------
+
+var reBsdSwitchPkg = func(v string) *regexp.Regexp {
+	p := regexp.QuoteMeta("php" + vv(v))
+	return regexp.MustCompile("^(" + p + "(-.*)?|roundcube(-.*)?-" + p + ")$")
+}
+
+// bsdPHPPackagesInstalled — установленные пакеты PHP версии v вместе с пакетами, которые от неё зависят (Roundcube).
+func bsdPHPPackagesInstalled(v string) []string {
+	out, _ := run("pkg", "query", "%n")
+	re := reBsdSwitchPkg(v)
+	var res []string
+	for _, n := range strings.Fields(out) {
+		if re.MatchString(n) {
+			res = append(res, n)
+		}
+	}
+	return res
+}
+
+// bsdPHPMapName переводит имя пакета на другую версию: php83-gd → php85-gd, roundcube-php83 → roundcube-php85.
+func bsdPHPMapName(name, from, to string) string {
+	return strings.Replace(name, "php"+vv(from), "php"+vv(to), 1)
+}
+
+// bsdPHPSwitch заменяет установленный PHP версии from на версию to: пакеты старой версии удаляются, ставятся
+// такие же пакеты новой (которых нет — пропускаются и перечисляются в журнале). При ошибке старая версия
+// возвращается. Вызывать под phpInstallMu. Файл php.ini и пулы PHP-FPM сайтов от версии не зависят и остаются.
+func bsdPHPSwitch(j *Job, from, to string) (missing []string, err error) {
+	logf := func(format string, a ...any) {
+		if j != nil {
+			j.Write([]byte(fmt.Sprintf(format, a...) + "\n"))
+		}
+	}
+	oldPkgs := bsdPHPPackagesInstalled(from)
+	if len(oldPkgs) == 0 {
+		return nil, errf("PHP %s не найден среди установленных пакетов", from)
+	}
+	var newPkgs []string
+	for _, n := range oldPkgs {
+		m := bsdPHPMapName(n, from, to)
+		if out, _ := run("pkg", "rquery", "%n", m); strings.TrimSpace(out) == "" {
+			missing = append(missing, m)
+			continue
+		}
+		newPkgs = append(newPkgs, m)
+	}
+	core := "php" + vv(to)
+	hasCore := false
+	for _, n := range newPkgs {
+		hasCore = hasCore || n == core
+	}
+	if !hasCore {
+		return nil, errf("В репозитории пакетов FreeBSD нет PHP %s", to)
+	}
+	if len(missing) > 0 {
+		logf("Нет пакетов для PHP %s (будут пропущены): %s", to, strings.Join(missing, ", "))
+	}
+	// Скачиваем новые пакеты заранее: если сеть недоступна, версия не меняется
+	jobStage(j, "Загрузка пакетов PHP "+to)
+	if _, e := runTimeout(30*time.Minute, "", "pkg", append([]string{"fetch", "-y"}, newPkgs...)...); e != nil {
+		return nil, errf("Не удалось загрузить пакеты PHP %s: %s", to, firstLine(e.Error()))
+	}
+	jobStage(j, "Остановка PHP-FPM и удаление PHP "+from)
+	service("stop", phpService(from))
+	if out, e := run("pkg", append([]string{"delete", "-y", "-f"}, oldPkgs...)...); e != nil {
+		logf("%s", out)
+		service("start", phpService(from))
+		return missing, errf("Не удалось удалить PHP %s: %s", from, firstLine(e.Error()))
+	}
+	bsdPHPForget()
+	jobStage(j, "Установка PHP "+to)
+	if _, e := runTimeout(30*time.Minute, "", "pkg", append([]string{"install", "-y"}, newPkgs...)...); e != nil {
+		// возвращаем прежнюю версию
+		logf("Установка PHP %s не удалась, возвращаю PHP %s", to, from)
+		runTimeout(30*time.Minute, "", "pkg", append([]string{"install", "-y"}, oldPkgs...)...)
+		bsdPHPForget()
+		service("start", phpService(from))
+		return missing, errf("Не удалось установить PHP %s: %s. Прежняя версия возвращена.", to, firstLine(e.Error()))
+	}
+	bsdPHPForget()
+	if e := bsdEnsurePHPIni(); e != nil {
+		return missing, e
+	}
+	if _, e := run(bsdFPMBin, "-t"); e != nil {
+		return missing, errf("Конфигурация PHP-FPM не прошла проверку: %s", firstLine(e.Error()))
+	}
+	os.MkdirAll(P(sockDir), 0755)
+	return missing, service("restart", phpService(to))
+}
+
+// bsdPHPSwitchAll переключает PHP и переводит на новую версию сайты, версию по умолчанию и веб-почту.
+func bsdPHPSwitchAll(j *Job, from, to string) error {
+	phpInstallMu.Lock()
+	defer phpInstallMu.Unlock()
+	if _, err := bsdPHPSwitch(j, from, to); err != nil {
+		return err
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	n := 0
+	for _, s := range store.Sites {
+		if s.PHP == from {
+			s.PHP = to
+			n++
+		}
+	}
+	if store.Settings.DefaultPHP == from || store.Settings.DefaultPHP == "" {
+		store.Settings.DefaultPHP = to
+	}
+	if store.Mail.Webmail.PHP == from {
+		store.Mail.Webmail.PHP = to
+	}
+	jobStage(j, fmt.Sprintf("PHP %s работает; на него переведено сайтов: %d", to, n))
+	return saveChecked()
 }

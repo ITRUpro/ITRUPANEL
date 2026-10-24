@@ -1719,7 +1719,8 @@ page('disk', {
 page('php', {
   title: 'PHP',
   async render(view) {
-    head(view, 'PHP', { sub: 'Несколько версий PHP одновременно, у каждого сайта — своя' });
+    const bsdPHP = !!(App.me && App.me.family === 'freebsd');
+    head(view, 'PHP', { sub: bsdPHP ? 'На FreeBSD работает одна версия PHP; переход заменяет её для всех сайтов' : 'Несколько версий PHP одновременно, у каждого сайта — своя' });
     const p = panel(view);
     const load = async () => {
       const rows = await api('php.list');
@@ -1737,7 +1738,7 @@ page('php', {
           !r.default && { i: 'check', t: 'Сделать версией по умолчанию', fn: async () => { await api('php.default', { version: r.version }); load(); } },
           { i: 'refresh', t: 'Перезапустить PHP-FPM', fn: async () => { try { await api('php.restart', { version: r.version }); toast('Перезапущен', 'ok'); load(); } catch (e) { fail(e); } } },
           { i: 'trash', t: 'Удалить', danger: true, fn: async () => { if (!(await confirmBox('Удалить PHP ' + r.version + '?', 'Пакеты PHP ' + r.version + ' будут удалены.'))) return; try { await api('php.remove', { version: r.version }); load(); } catch (e) { fail(e); } } },
-        ] : [{ i: 'download', t: 'Установить', label: 'Установить', fn: async () => { try { await api('php.install', { version: r.version }); toast('Установка PHP ' + r.version + ' началась (2–5 минут)'); load(); } catch (e) { fail(e); } } }],
+        ] : [{ i: 'download', t: bsdPHP && rows.some((x) => x.installed) ? 'Перейти на эту версию' : 'Установить', label: bsdPHP && rows.some((x) => x.installed) ? 'Перейти на эту версию' : 'Установить', fn: async () => { try { if (bsdPHP && rows.some((x) => x.installed) && !(await confirmBox('Перейти на PHP ' + r.version + '?', 'Установленный PHP будет заменён этой версией, все сайты и веб-почта переключатся на неё. Настройки php.ini сохранятся. Сайты не работают несколько минут.'))) return; await api('php.install', { version: r.version }); toast('Установка PHP ' + r.version + ' началась (2–5 минут)'); load(); } catch (e) { fail(e); } } }],
       });
       return rows.some((r) => r.job === 'running');
     };

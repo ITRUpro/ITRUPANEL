@@ -419,7 +419,12 @@ func registerPHP() {
 		user, ip := q.S.User, q.S.IP
 		go func() {
 			start := time.Now()
-			err := phpInstall(in.Version)
+			var err error
+			if cur := bsdInstalledPHP(); isBSD() && cur != "" && cur != in.Version {
+				err = bsdPHPSwitchAll(nil, cur, in.Version)
+			} else {
+				err = phpInstall(in.Version)
+			}
 			e := OpEntry{Time: start, User: user, IP: ip, Action: "Установка PHP (завершение)", Object: in.Version, Status: "ok", Ms: time.Since(start).Milliseconds()}
 			mu.Lock()
 			if err != nil {

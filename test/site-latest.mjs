@@ -44,3 +44,20 @@ test('site ignores a version that is not a plain number', async () => {
 test('both site pages load the script', () => {
   for (const f of ['../release/index.html']) assert.match(fs.readFileSync(new URL(f, import.meta.url), 'utf8'), /\/panel-assets\/latest\.js/);
 });
+
+test('the FreeBSD download link follows latest-freebsd.json, independently of Linux', async () => {
+  const enc = (version) => Buffer.from(JSON.stringify({ version })).toString('base64');
+  const a = (href) => ({ href, getAttribute(n) { return n === 'href' ? this.href : null; }, setAttribute(n, v) { if (n === 'href') this.href = v; }, childNodes: [] });
+  const linux = a('panel/itrupanel-full-0.2.7.zip');
+  const bsd = a('panel/itrupanel-freebsd-0.2.7.zip');
+  const els = { 'a[href*="itrupanel-full-"]': [linux], 'a[href*="itrupanel-freebsd-"]': [bsd] };
+  const c = vm.createContext({
+    document: { querySelectorAll: (sel) => els[sel] || [] },
+    fetch: async (url) => ({ ok: true, json: async () => ({ payload: enc(String(url).includes('freebsd') ? '0.3.9' : '0.3.12') }) }),
+    atob: (s) => Buffer.from(s, 'base64').toString('binary'), TextDecoder, Uint8Array,
+  });
+  vm.runInContext(fs.readFileSync(new URL('../release/panel-assets/latest.js', import.meta.url), 'utf8'), c);
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(linux.href, 'panel/itrupanel-full-0.3.12.zip');
+  assert.equal(bsd.href, 'panel/itrupanel-freebsd-0.3.9.zip');
+});
