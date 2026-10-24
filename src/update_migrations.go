@@ -82,7 +82,9 @@ func panelMigrations() []updateMigration {
 			}
 			return paths, nil
 		}, func() error {
-			if fileExists(cfg.Home + "/www/phpmyadmin/index.php") {
+			// Без установленного PHP phpMyAdmin перенастроить нечем: обновление панели из-за этого не прерывается,
+			// настройка выполнится при следующей установке PHP или phpMyAdmin
+			if fileExists(cfg.Home+"/www/phpmyadmin/index.php") && defaultPHP() != "" {
 				return installPMA()
 			}
 			return nil

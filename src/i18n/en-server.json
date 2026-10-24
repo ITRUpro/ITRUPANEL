@@ -1311,5 +1311,6 @@
   "Не удалось загрузить пакеты PHP %s: %s": "Could not download the PHP %s packages: %s",
   "Не удалось удалить PHP %s: %s": "Could not remove PHP %s: %s",
   "Не удалось установить PHP %s: %s. Прежняя версия возвращена.": "Could not install PHP %s: %s. The previous version was restored.",
-  "Конфигурация PHP-FPM не прошла проверку: %s": "The PHP-FPM configuration failed the check: %s"
+  "Конфигурация PHP-FPM не прошла проверку: %s": "The PHP-FPM configuration failed the check: %s",
+  "Пакеты FreeBSD собраны для более новой версии системы, чем стоит на сервере (%s), поэтому %s не запускается: %s. Обновите систему командой freebsd-update fetch install; если ошибка останется — freebsd-update upgrade -r <следующий выпуск> (например, 15.1-RELEASE); затем повторите.": "The FreeBSD packages are built for a newer system release than the one on this server (%s), so %s does not start: %s. Update the system with freebsd-update fetch install; if the error remains, run freebsd-update upgrade -r <next release> (for example 15.1-RELEASE); then try again."
 }

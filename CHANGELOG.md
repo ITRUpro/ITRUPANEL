@@ -2,6 +2,11 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.23
+
+- **FreeBSD only.** Fixed: updating the panel was interrupted and rolled back ("Install PHP first" in the migration log) when PHP was not installed on the server while phpMyAdmin was still there, for example after PHP was removed before switching to another version. Such an update now goes through; phpMyAdmin is reconfigured when PHP is installed again. The same migration is also safe on Linux servers without PHP
+- **FreeBSD only.** When the packages are built for a newer system release than the one on the server (for example 15.0 with packages for 15.1) `php-fpm` fails with `ld-elf.so.1: … FBSD_1.9 not found`; the panel and the installer now say so and point to `freebsd-update`. The installed PHP version is detected from the package and from `php-fpm -v`, and the PHP service is stopped before its packages are removed
+
 ## 0.2.22
 
 - **FreeBSD: switching the PHP version.** The PHP section has a **Switch to this version** button: the panel stops PHP-FPM, removes the installed PHP packages, installs the same packages of the chosen version (8.2–8.5), moves all websites, the default version and webmail to it and keeps the `php.ini` settings and the extensions that exist for the new version; if anything fails the previous version is restored. Tested with 8.3 → 8.5 → 8.4 with websites, a PECL extension, Roundcube and phpMyAdmin

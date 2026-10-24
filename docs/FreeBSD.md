@@ -20,6 +20,8 @@ fetch -o install.sh https://itrupanel.com/panel/install-itrupanel-freebsd.sh && 
 
 Update: from the panel, with the same command, or `sh update-freebsd.sh` from a new archive. The program is backed up first and restored on failure.
 
+Keep the system up to date: FreeBSD packages are built for the current release, and on an older one (for example 15.0 while the packages are built for 15.1) programs fail to start with `ld-elf.so.1: … version FBSD_… not found`. Run `freebsd-update fetch install` before installing and, if the error remains, `freebsd-update upgrade -r <next release>`. The installer and the PHP section detect this and say so.
+
 ## What works
 
 Websites (nginx + PHP-FPM, nginx + Apache, static, proxy), site templates, page cache, PHP profiles, site protection; MariaDB and phpMyAdmin; SSL (self-signed, Let's Encrypt through certbot); FTP (pure-ftpd); mail (Postfix, Dovecot, OpenDKIM, Rspamd with its own Redis, Roundcube); DNS (NSD); backups and restore; cron; file manager; PHP settings and extensions from FreeBSD packages; antivirus (built-in, ClamAV); firewall on pf; login protection and FTP protection (fail2ban + pf); monitoring, logs, jobs, shell client; updating from the panel.

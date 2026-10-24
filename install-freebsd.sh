@@ -72,6 +72,11 @@ CERTBOT=$(pkg search -q '^py3[0-9]*-certbot-[0-9]' 2>/dev/null | sed 's/-[0-9][^
 say "Ставлю nginx, $MARIADB, certbot, pure-ftpd и утилиты"
 pkg install -y nginx "$MARIADB" "$MARIACLIENT" "$CERTBOT" pure-ftpd bash curl rsync unzip zip sudo ca_root_nss
 
+# Пакеты FreeBSD собираются для одной версии системы: на более старой программа «установлена», но не запускается
+if nginx -v 2>&1 | grep -q 'ld-elf.so.1'; then
+  die "пакеты FreeBSD собраны для более новой версии системы, чем стоит на сервере ($RELEASE): nginx не запускается. Обновите систему: freebsd-update fetch install, а если ошибка останется — freebsd-update upgrade -r <следующий выпуск> (например, 15.1-RELEASE); затем повторите установку."
+fi
+
 say "Настраиваю nginx"
 NGINX_DIR=/usr/local/etc/nginx
 mkdir -p "$NGINX_DIR/conf.d" /var/log/nginx /var/www

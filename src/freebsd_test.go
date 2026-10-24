@@ -3,6 +3,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -245,5 +247,27 @@ func TestBSDPHPSwitchNames(t *testing.T) {
 	}
 	if got := bsdPHPMapName("roundcube-php83", "8.3", "8.5"); got != "roundcube-php85" {
 		t.Errorf("roundcube-php83 → %s", got)
+	}
+}
+
+func TestBSDCheckBinaryExplainsOldSystem(t *testing.T) {
+	asFreeBSD(t)
+	osInfo.Pretty = "FreeBSD 15.0-RELEASE"
+	dir := t.TempDir()
+	broken := filepath.Join(dir, "php-fpm")
+	os.WriteFile(broken, []byte("#!/bin/sh\necho 'ld-elf.so.1: /lib/libc.so.7: version FBSD_1.9 required by /usr/local/sbin/php-fpm not found'\nexit 1\n"), 0755)
+	err := bsdCheckBinary(broken, "-v")
+	if err == nil || !strings.Contains(err.Error(), "freebsd-update") || !strings.Contains(err.Error(), "FBSD_1.9") || !strings.Contains(err.Error(), "FreeBSD 15.0-RELEASE") {
+		t.Fatalf("ожидалось объяснение про старую систему, получено: %v", err)
+	}
+	fine := filepath.Join(dir, "ok")
+	os.WriteFile(fine, []byte("#!/bin/sh\necho PHP 8.5.12\n"), 0755)
+	if err := bsdCheckBinary(fine, "-v"); err != nil {
+		t.Errorf("исправная программа: %v", err)
+	}
+	other := filepath.Join(dir, "fail")
+	os.WriteFile(other, []byte("#!/bin/sh\necho 'configuration error'\nexit 1\n"), 0755)
+	if err := bsdCheckBinary(other, "-v"); err != nil {
+		t.Errorf("обычная ошибка программы не должна выдаваться за старую систему: %v", err)
 	}
 }

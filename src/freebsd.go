@@ -201,7 +201,6 @@ var (
 	bsdPHPMu      sync.Mutex
 	bsdPHPVer     string
 	bsdPHPVerTime time.Time
-	reBsdPHPVer   = regexp.MustCompile(`^(\d+)\.(\d+)`)
 )
 
 // bsdInstalledPHP — версия установленного PHP-FPM, например "8.3"; пусто, если PHP нет.
@@ -217,12 +216,39 @@ func bsdInstalledPHP() string {
 	if bsdPHPVer != "" && time.Since(bsdPHPVerTime) < time.Minute {
 		return bsdPHPVer
 	}
-	out, _ := runTimeout(10*time.Second, "", bsdPHPCLI, "-r", "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
-	if m := reBsdPHPVer.FindStringSubmatch(strings.TrimSpace(out)); m != nil {
-		bsdPHPVer = m[1] + "." + m[2]
+	bsdPHPVer = bsdDetectPHP()
+	if bsdPHPVer != "" {
 		bsdPHPVerTime = time.Now()
 	}
 	return bsdPHPVer
+}
+
+var (
+	reBsdCorePkg = regexp.MustCompile(`^php(\d)(\d)$`)
+	reBsdFPMVer  = regexp.MustCompile(`PHP (\d+)\.(\d+)\.`)
+	reBsdCLIVer  = regexp.MustCompile(`ITRUV=(\d+)\.(\d+)`)
+)
+
+// bsdDetectPHP узнаёт версию установленного PHP тремя способами: по пакету phpXY, по `php-fpm -v` и по `php -r`.
+// Версия не зависит от одной программы: предупреждения PHP или отсутствие CLI не должны скрывать установленный PHP.
+func bsdDetectPHP() string {
+	if out, err := run("pkg", "query", "%n"); err == nil {
+		for _, n := range strings.Fields(out) {
+			if m := reBsdCorePkg.FindStringSubmatch(n); m != nil {
+				return m[1] + "." + m[2]
+			}
+		}
+	}
+	if out, _ := runTimeout(10*time.Second, "", bsdFPMBin, "-v"); out != "" {
+		if m := reBsdFPMVer.FindStringSubmatch(out); m != nil {
+			return m[1] + "." + m[2]
+		}
+	}
+	out, _ := runTimeout(10*time.Second, "", bsdPHPCLI, "-r", "echo 'ITRUV='.PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+	if m := reBsdCLIVer.FindStringSubmatch(out); m != nil {
+		return m[1] + "." + m[2]
+	}
+	return ""
 }
 
 func bsdPHPForget() {
@@ -258,6 +284,9 @@ func bsdPHPInstall(v string) error {
 		}
 	}
 	bsdPHPForget()
+	if err := bsdCheckBinary(bsdFPMBin, "-v"); err != nil {
+		return err
+	}
 	if err := bsdEnsurePHPIni(); err != nil {
 		return err
 	}
@@ -277,8 +306,22 @@ func bsdEnsurePHPIni() error {
 	return writeFile(bsdPHPIni, b, 0644)
 }
 
+// bsdCheckBinary запускает программу пакета и проверяет, что она вообще стартует. Пакеты FreeBSD собираются
+// для одной версии системы: на более старой (например, 15.0 при пакетах для 15.1) программа не запускается
+// («ld-elf.so.1: … version FBSD_… not found»), хотя пакет «установлен». Тогда говорим об этом прямо.
+func bsdCheckBinary(path string, args ...string) error {
+	out, err := runTimeout(15*time.Second, "", path, args...)
+	if err != nil && (strings.Contains(out, "ld-elf.so.1") || strings.Contains(out, "Shared object")) {
+		return errf("Пакеты FreeBSD собраны для более новой версии системы, чем стоит на сервере (%s), поэтому %s не запускается: %s. Обновите систему командой freebsd-update fetch install; если ошибка останется — freebsd-update upgrade -r <следующий выпуск> (например, 15.1-RELEASE); затем повторите.", osInfo.Pretty, filepath.Base(path), firstLine(out))
+	}
+	return nil
+}
+
 // bsdPHPRemove удаляет PHP со всеми его модулями.
 func bsdPHPRemove(v string) error {
+	// Служба останавливается до удаления пакетов: иначе старый php-fpm остаётся в памяти без программы,
+	// держит сокеты и мешает запуску новой версии
+	service("stop", "php_fpm")
 	_, err := run("pkg", "remove", "-y", "-f", "-g", "php"+vv(v)+"*")
 	if err == nil {
 		bsdPHPForget()
@@ -453,6 +496,9 @@ func bsdPHPSwitch(j *Job, from, to string) (missing []string, err error) {
 	}
 	bsdPHPForget()
 	if e := bsdEnsurePHPIni(); e != nil {
+		return missing, e
+	}
+	if e := bsdCheckBinary(bsdFPMBin, "-v"); e != nil {
 		return missing, e
 	}
 	if _, e := run(bsdFPMBin, "-t"); e != nil {

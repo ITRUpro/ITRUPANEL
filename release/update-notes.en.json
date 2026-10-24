@@ -1,4 +1,5 @@
 [
-  "FreeBSD: in the PHP section the “Switch to this version” button removes the installed PHP and installs the chosen one by itself; websites, webmail, php.ini settings and extensions are carried over.",
+  "FreeBSD: updating the panel is no longer interrupted and rolled back when PHP is not installed on the server (for example, it was removed before switching to another version).",
+  "FreeBSD: when the packages are built for a newer system release and PHP does not start, the panel says so and shows how to update the system; the installed PHP version is detected more reliably.",
   "Minor bug fixes."
 ]
