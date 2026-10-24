@@ -1588,7 +1588,6 @@
   "Страницу «Сайт не найден»": "The “Website not found” page",
   "Ничего (закрыть соединение)": "Nothing (close the connection)",
   "Например, http://IP-сервера/ или домен, который направлен на сервер, но не добавлен в панель. HTTPS по IP-адресу всегда отклоняется: сертификата на IP нет, а показывать чужой нельзя.": "For example, http://server-IP/ or a domain that points to the server but is not added to the panel. HTTPS by IP address is always rejected: there is no certificate for the IP, and another site’s certificate must not be shown.",
-  "Debian 11–13, Ubuntu 22.04 / 24.04 / 26.04, AlmaLinux и Rocky Linux 8–10, CentOS Stream 9–10 и RHEL 8–10": "Debian 11–13, Ubuntu 22.04 / 24.04 / 26.04, AlmaLinux and Rocky Linux 8–10, CentOS Stream 9–10 and RHEL 8–10",
   "Воскресенье": "Sunday",
   "Понедельник": "Monday",
   "Вторник": "Tuesday",
@@ -2006,7 +2005,6 @@
   "Подключена из облака": "Imported from the cloud",
   "Готовим файл для скачивания…": "Preparing the file for download…",
   "Не удалось подготовить файл": "Could not prepare the file",
-  "Скачать архив 0.2.20": "Download version 0.2.20",
   "Правила антивируса": "Antivirus rules",
   "Подписанный набор правил: версия": "Signed rule pack: version",
   "от": "from",
@@ -2121,5 +2119,13 @@
   "Библиотека шаблонов": "Template library",
   "Обновить библиотеку": "Update the library",
   "Обновлять автоматически раз в сутки": "Update automatically once a day",
-  "Сохранить и закрыть": "Save and close"
+  "Сохранить и закрыть": "Save and close",
+  "Скачать архив 0.2.21": "Download version 0.2.21",
+  "Debian 11–13, Ubuntu 22.04 / 24.04 / 26.04, AlmaLinux и Rocky Linux 8–10, CentOS Stream 9–10, RHEL 8–10 и FreeBSD 14–15 (бета, отдельный архив)": "Debian 11–13, Ubuntu 22.04 / 24.04 / 26.04, AlmaLinux and Rocky Linux 8–10, CentOS Stream 9–10, RHEL 8–10 and FreeBSD 14–15 (beta, separate archive)",
+  "Архив для FreeBSD (бета)": "FreeBSD archive (beta)",
+  "DNS-сервер NSD": "NSD DNS server",
+  "DNS-сервер NSD остановлен": "NSD DNS server is stopped",
+  "DNS-сервер NSD не установлен": "NSD DNS server is not installed",
+  "Установить NSD": "Install NSD",
+  "Устанавливаю NSD…": "Installing NSD…"
 }

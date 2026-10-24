@@ -103,6 +103,9 @@ func phpExtPackage(v, ext string) string {
 	if e == nil {
 		e = &phpExtDef{Name: ext}
 	}
+	if isBSD() {
+		return phpExtPackagesBSD(v, e)[0]
+	}
 	if osInfo.Family == "rhel" {
 		suffix := e.Rhel
 		if suffix == "" {
@@ -123,7 +126,37 @@ func phpExtPackage(v, ext string) string {
 	return "php" + v + "-" + suffix
 }
 
+// phpExtPackagesBSD — пакеты FreeBSD для расширения: phpXY-<имя>, у PECL — phpXY-pecl-<имя>.
+func phpExtPackagesBSD(v string, e *phpExtDef) []string {
+	p := "php" + vv(v) + "-"
+	switch e.Name {
+	case "mysql":
+		return []string{p + "mysqli", p + "pdo_mysql"}
+	case "pgsql":
+		return []string{p + "pgsql", p + "pdo_pgsql"}
+	case "sqlite3":
+		return []string{p + "sqlite3", p + "pdo_sqlite"}
+	case "odbc":
+		return []string{p + "odbc", p + "pdo_odbc"}
+	case "apcu":
+		return []string{p + "pecl-APCu"}
+	case "imagick":
+		return []string{p + "pecl-imagick"}
+	case "lz4":
+		return []string{p + "lz4"}
+	case "zstd":
+		return []string{p + "zstd"}
+	}
+	if e.Pecl {
+		return []string{p + "pecl-" + e.Name}
+	}
+	return []string{p + e.Name}
+}
+
 func phpConfDir(v string) string {
+	if isBSD() {
+		return bsdPrefix + "/etc/php"
+	}
 	if osInfo.Family == "rhel" {
 		return "/etc/opt/remi/php" + vv(v) + "/php.d"
 	}
@@ -134,7 +167,7 @@ func phpConfDir(v string) string {
 func phpExtIniFiles(v string, mods []string) []string {
 	var out []string
 	for _, m := range mods {
-		if osInfo.Family == "rhel" {
+		if osInfo.Family == "rhel" || isBSD() {
 			g1, _ := filepath.Glob(P(phpConfDir(v) + "/*-" + m + ".ini"))
 			g2, _ := filepath.Glob(P(phpConfDir(v) + "/*-" + m + ".ini.disabled"))
 			out = append(append(out, g1...), g2...)
@@ -234,7 +267,7 @@ func phpExtSetEnabled(v, ext string, on bool) error {
 	if len(files) == 0 {
 		return errf("Модуль %s не установлен", ext)
 	}
-	if osInfo.Family == "rhel" {
+	if osInfo.Family == "rhel" || isBSD() {
 		for _, f := range files {
 			switch {
 			case on && strings.HasSuffix(f, ".ini.disabled"):
@@ -271,6 +304,9 @@ var ioncubeURLBase = "https://downloads.ioncube.com/loader_downloads/"
 var ioncubeVersions = map[string]bool{"5.6": true, "7.0": true, "7.1": true, "7.2": true, "7.3": true, "7.4": true, "8.0": true, "8.1": true, "8.2": true, "8.3": true, "8.4": true, "8.5": true}
 
 func ioncubeSupported(v string) (bool, string) {
+	if isBSD() {
+		return false, "У ionCube нет загрузчика для FreeBSD"
+	}
 	if !ioncubeVersions[v] {
 		return false, "Для этой версии PHP загрузчика ionCube нет"
 	}
@@ -407,6 +443,12 @@ func phpExtInstall(v, ext string) error {
 		defer cancel()
 		return ioncubeInstall(ctx, v)
 	}
+	if isBSD() {
+		if err := pkgInstall(phpExtPackagesBSD(v, e)...); err != nil {
+			return errf("Модуль %s для PHP %s не установлен: %s", ext, v, phpExtFriendly(err))
+		}
+		return phpExtRestart(v)
+	}
 	if e.Builtin {
 		// Входит в основной пакет PHP: нужно только включить.
 		return phpExtSetEnabledLocked(v, ext, true)
@@ -421,7 +463,7 @@ func phpExtInstall(v, ext string) error {
 func phpExtFriendly(err error) string {
 	s := firstLine(err.Error())
 	low := strings.ToLower(err.Error())
-	if strings.Contains(low, "unable to locate package") || strings.Contains(low, "no match for argument") || strings.Contains(low, "nothing provides") {
+	if strings.Contains(low, "unable to locate package") || strings.Contains(low, "no match for argument") || strings.Contains(low, "nothing provides") || strings.Contains(low, "no packages available") {
 		return "пакета нет в репозитории для этой версии PHP или системы"
 	}
 	return s
@@ -439,12 +481,14 @@ func phpExtRemove(v, ext string) error {
 	if e.Special == "ioncube" {
 		return ioncubeRemove(v)
 	}
-	if e.Builtin {
+	if e.Builtin && !isBSD() {
 		return errf("Модуль %s входит в основной пакет PHP: его можно только выключить", ext)
 	}
 	pkg := phpExtPackage(v, ext)
 	var err error
-	if osInfo.Family == "rhel" {
+	if isBSD() {
+		_, err = run("pkg", append([]string{"remove", "-y"}, phpExtPackagesBSD(v, e)...)...)
+	} else if osInfo.Family == "rhel" {
 		_, err = run("dnf", "remove", "-y", pkg)
 	} else {
 		_, err = run("apt-get", "purge", "-y", pkg)

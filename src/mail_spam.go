@@ -56,6 +56,7 @@ appendonly yes
 maxmemory 128mb
 maxmemory-policy noeviction
 `, secret),
+		spamRedisUnitPath(): spamRedisUnit(redisBin, redisUser),
 		"/etc/systemd/system/itrupanel-spam-redis.service": `[Unit]
 Description=ITRUPANEL Redis for Rspamd
 After=network.target
@@ -74,6 +75,9 @@ ProtectHome=true
 WantedBy=multi-user.target
 `,
 	}
+	if isBSD() {
+		delete(files, "/etc/systemd/system/itrupanel-spam-redis.service")
+	}
 	for p, content := range spamExtraFiles(s) {
 		files[p] = content
 	}
@@ -82,8 +86,8 @@ WantedBy=multi-user.target
 func setupSpam(s SpamSettings, j *Job) (err error) {
 	mailSetupMu.Lock()
 	defer mailSetupMu.Unlock()
-	if (osInfo.Family != "debian" && osInfo.Family != "rhel") || (!cfg.Dry && !osInfo.Systemd) {
-		return errf("Антиспам требует Debian, Ubuntu или RHEL-систему с systemd")
+	if !isBSD() && ((osInfo.Family != "debian" && osInfo.Family != "rhel") || (!cfg.Dry && !osInfo.Systemd)) {
+		return errf("Антиспам требует Debian, Ubuntu, RHEL-систему с systemd или FreeBSD")
 	}
 	mu.Lock()
 	ready, installed := store.Mail.Ready, store.Mail.Spam.Installed
@@ -97,7 +101,7 @@ func setupSpam(s SpamSettings, j *Job) (err error) {
 	if err = writeFile(spamOwned, []byte("ITRUPANEL\n"), 0600); err != nil {
 		return
 	}
-	if !installed {
+	if !installed && !isBSD() {
 		if _, err = run("systemctl", "mask", "rspamd"); err != nil {
 			return
 		}
@@ -128,6 +132,11 @@ func setupSpam(s SpamSettings, j *Job) (err error) {
 	if err = selinuxLabel("/var/lib/itrupanel-spam-redis", "redis_var_lib_t"); err != nil {
 		return
 	}
+	if isBSD() {
+		if err = bsdSpamPrepare(); err != nil {
+			return
+		}
+	}
 	if !fileExists(spamRedisSecret) {
 		if err = writeFile(spamRedisSecret, []byte(randToken(32)), 0600); err != nil {
 			return
@@ -144,7 +153,14 @@ func setupSpam(s SpamSettings, j *Job) (err error) {
 	if e != nil {
 		return e
 	}
-	if _, err = run("systemctl", "enable", "itrupanel-spam-redis", "rspamd"); err != nil {
+	if isBSD() {
+		for _, svc := range []string{"itrupanel-spam-redis", "rspamd"} {
+			if err = service("enable", svc); err != nil {
+				undo()
+				return
+			}
+		}
+	} else if _, err = run("systemctl", "enable", "itrupanel-spam-redis", "rspamd"); err != nil {
 		undo()
 		return
 	}

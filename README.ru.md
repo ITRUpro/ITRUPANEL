@@ -97,6 +97,9 @@ PHP-FPM, поэтому сайты изолированы друг от друг
 | Debian | 11, 12, 13 |
 | AlmaLinux, Rocky Linux | 8, 9, 10 |
 | CentOS Stream, RHEL | 9–10, 8–10 |
+| FreeBSD (бета, отдельный архив) | 14, 15 |
+
+FreeBSD (бета) ставится отдельным архивом, установщиком и каналом обновлений; что работает и чем отличается от Linux — в [docs/FreeBSD.md](docs/FreeBSD.md) (на английском).
 
 amd64 и arm64 · нужны root и systemd · устанавливайте на чистый сервер.
 
@@ -122,6 +125,14 @@ PHP_VERSION=none bash install.sh                        # не устанавл�
 Логин и пароль позже меняются в панели (значок ключа) или командой `itrupanel passwd пароль [логин]`.
 
 Порты: панель TCP 3333 · сайты 80/443 · FTP 21 и пассивные 30000–30100 · DNS 53 (если используется) · почта 25/587/993 (если включена).
+
+**FreeBSD 14/15 (бета)** ставится отдельным установщиком и архивом. От root на чистом сервере FreeBSD:
+
+```sh
+fetch -o install.sh https://itrupanel.com/panel/install-itrupanel-freebsd.sh && sh install.sh
+```
+
+Что работает и чем отличается от Linux: [docs/FreeBSD.md](docs/FreeBSD.md) (на английском).
 
 ## Обновление
 

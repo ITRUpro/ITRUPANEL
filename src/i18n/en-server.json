@@ -1288,5 +1288,21 @@
   "Перенаправление библиотеки шаблонов запрещено": "Redirecting the template library download is not allowed",
   "нет адресов библиотеки шаблонов": "no template library addresses",
   "Библиотека уже актуальна: версия %s": "The library is up to date: version %s",
-  "Библиотека обновлена: версия %s, шаблонов: %d": "Library updated: version %s, templates: %d"
+  "Библиотека обновлена: версия %s, шаблонов: %d": "Library updated: version %s, templates: %d",
+  "%s пока недоступно на FreeBSD (бета)": "%s is not available on FreeBSD yet (beta)",
+  "Режим с OpenLiteSpeed": "The OpenLiteSpeed mode",
+  "%s уже существует и не является ссылкой на %s": "%s already exists and is not a link to %s",
+  "OpenLiteSpeed недоступен на FreeBSD": "OpenLiteSpeed is not available on FreeBSD",
+  "pf.conf не прошёл проверку: %s": "pf.conf failed the check: %s",
+  "На FreeBSD одновременно работает одна версия PHP. Сейчас установлен PHP %s: сначала удалите его (сайты на нём должны быть переведены или удалены).": "Only one PHP version runs at a time on FreeBSD. PHP %s is installed now: remove it first (move or delete the sites that use it).",
+  "Требуется Pure-FTPd": "Pure-FTPd is required",
+  "Подготовка pf и якоря панели": "Preparing pf and the panel anchor",
+  "Подготовка pf для блокировок": "Preparing pf for blocking",
+  "У ionCube нет загрузчика для FreeBSD": "ionCube has no loader for FreeBSD",
+  "На FreeBSD обновление пока выполняется вручную: скачайте новый архив itrupanel-freebsd и запустите в нём sh update-freebsd.sh": "On FreeBSD the update is still manual: download the new itrupanel-freebsd archive and run sh update-freebsd.sh in it",
+  "Автоустановка почты доступна на Debian, Ubuntu, AlmaLinux, Rocky, CentOS Stream, RHEL и FreeBSD": "Automatic mail setup is available on Debian, Ubuntu, AlmaLinux, Rocky, CentOS Stream, RHEL and FreeBSD",
+  "Антиспам требует Debian, Ubuntu, RHEL-систему с systemd или FreeBSD": "Antispam needs Debian, Ubuntu, a RHEL-family system with systemd, or FreeBSD",
+  "Установка Roundcube требует Debian, Ubuntu, RHEL-систему с systemd или FreeBSD": "Roundcube installation needs Debian, Ubuntu, a RHEL-family system with systemd, or FreeBSD",
+  "Не удалось установить NSD: %s": "Could not install NSD: %s",
+  "DNS-сервер NSD": "NSD DNS server"
 }

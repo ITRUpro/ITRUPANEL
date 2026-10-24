@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -51,6 +52,9 @@ func runSetup(php string) error {
 		return service("enable", "nginx")
 	})
 	step("каталоги и ротация журналов", func() error {
+		if isBSD() {
+			return bsdSetupLogs()
+		}
 		if err := writeFile("/etc/tmpfiles.d/itrupanel.conf", []byte("d "+sockDir+" 0755 root root -\n"), 0644); err != nil {
 			return err
 		}
@@ -81,7 +85,11 @@ func runSetup(php string) error {
 		return fmt.Errorf("MariaDB не отвечает")
 	})
 	step("FTP (pure-ftpd)", setupPureFTPd)
-	step("DNS-сервер BIND", setupBind)
+	if isBSD() {
+		step("DNS-сервер NSD", setupBind)
+	} else {
+		step("DNS-сервер BIND", setupBind)
+	}
 	step("cron", func() error { return service("enable", cronService()) })
 	if osInfo.Family == "rhel" {
 		step("SELinux", func() error {
@@ -105,6 +113,9 @@ func runSetup(php string) error {
 	if php != "" && php != "none" {
 		phpOK := step("PHP "+php+" (несколько минут)", func() error {
 			if phpIsInstalled(php) {
+				if isBSD() {
+					bsdEnsurePHPIni()
+				}
 				return service("enable", phpService(php))
 			}
 			return phpInstall(php)
@@ -133,29 +144,38 @@ func runSetup(php string) error {
 	// На серверах меньше 2 ГБ ещё два веб-сервера вместе с MariaDB, PHP-FPM и dnf/apt
 	// исчерпывают память, поэтому там они ставятся только при первом выборе для сайта.
 	smallHost := setupSmallMemory()
-	optional("Apache (за nginx)", func() error {
-		if apacheReady() {
-			return nil
-		}
-		if smallHost {
-			return errf("памяти меньше 2 ГБ")
-		}
-		return ensureApache()
-	})
-	optional("OpenLiteSpeed (за nginx, несколько минут)", func() error {
-		if !cfg.Dry && !osInfo.Systemd {
-			return errf("нужен systemd")
-		}
-		if smallHost {
-			return errf("памяти меньше 2 ГБ")
-		}
-		return ensureOLS()
-	})
-	step("файрвол", setupFirewall)
+	{
+		optional("Apache (за nginx)", func() error {
+			if apacheReady() {
+				return nil
+			}
+			if smallHost {
+				return errf("памяти меньше 2 ГБ")
+			}
+			return ensureApache()
+		})
+	}
+	if !isBSD() {
+		optional("OpenLiteSpeed (за nginx, несколько минут)", func() error {
+			if !cfg.Dry && !osInfo.Systemd {
+				return errf("нужен systemd")
+			}
+			if smallHost {
+				return errf("памяти меньше 2 ГБ")
+			}
+			return ensureOLS()
+		})
+	}
+	if !isBSD() {
+		step("файрвол", setupFirewall)
+	}
 	if len(setupErrors) > 0 {
 		return errors.Join(setupErrors...)
 	}
 	step("служба itrupanel", func() error {
+		if isBSD() {
+			return bsdInstallPanelService()
+		}
 		if !osInfo.Systemd {
 			return nil
 		}
@@ -205,6 +225,9 @@ func setupPureFTPd() error {
 	host, _ := os.Hostname()
 	crt, key, _ := selfSigned([]string{host}, 3650)
 	pem := append(append([]byte{}, key...), crt...)
+	if isBSD() {
+		return bsdSetupPureFTPd(pem)
+	}
 	if osInfo.Family == "rhel" {
 		writeFile("/etc/pki/pure-ftpd/pure-ftpd.pem", pem, 0600)
 		conf := readFile("/etc/pure-ftpd/pure-ftpd.conf")
@@ -213,29 +236,7 @@ func setupPureFTPd() error {
 			"PassivePortRange": "30000 30100", "MinUID": "1000", "TLS": "1", "CertFile": "/etc/pki/pure-ftpd/pure-ftpd.pem",
 			"NoAnonymous": "yes", "CreateHomeDir": "no", "DontResolve": "yes",
 		}
-		var b bytes.Buffer
-		seen := map[string]bool{}
-		for _, line := range strings.Split(conf, "\n") {
-			t := strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(line), "#"))
-			fs := strings.Fields(t)
-			if len(fs) == 0 {
-				b.WriteString(line + "\n")
-				continue
-			}
-			k := fs[0]
-			if v, ok := set[k]; ok && !seen[k] {
-				b.WriteString(k + "    " + v + "\n")
-				seen[k] = true
-				continue
-			}
-			b.WriteString(line + "\n")
-		}
-		for k, v := range set {
-			if !seen[k] {
-				b.WriteString(k + "    " + v + "\n")
-			}
-		}
-		writeFile("/etc/pure-ftpd/pure-ftpd.conf", bytes.TrimRight(b.Bytes(), "\n"), 0644)
+		writeFile("/etc/pure-ftpd/pure-ftpd.conf", []byte(pureConfApply(conf, set)), 0644)
 	} else {
 		writeFile("/etc/ssl/private/pure-ftpd.pem", pem, 0600)
 		c := "/etc/pure-ftpd/conf/"
@@ -283,4 +284,37 @@ func setupFirewall() error {
 
 func init() {
 	log.SetFlags(log.LstdFlags)
+}
+
+// pureConfApply выставляет значения в pure-ftpd.conf: существующие строки (в том числе
+// закомментированные) заменяются, недостающие дописываются в конец.
+func pureConfApply(conf string, set map[string]string) string {
+	var b bytes.Buffer
+	seen := map[string]bool{}
+	for _, line := range strings.Split(conf, "\n") {
+		t := strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(line), "#"))
+		fs := strings.Fields(t)
+		if len(fs) == 0 {
+			b.WriteString(line + "\n")
+			continue
+		}
+		k := fs[0]
+		if v, ok := set[k]; ok && !seen[k] {
+			b.WriteString(k + "    " + v + "\n")
+			seen[k] = true
+			continue
+		}
+		b.WriteString(line + "\n")
+	}
+	keys := make([]string, 0, len(set))
+	for k := range set {
+		if !seen[k] {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		b.WriteString(k + "    " + set[k] + "\n")
+	}
+	return string(bytes.TrimRight(b.Bytes(), "\n"))
 }

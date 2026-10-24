@@ -19,6 +19,9 @@ import (
 )
 
 func uptime() time.Duration {
+	if isBSD() {
+		return bsdUptime()
+	}
 	b, _ := os.ReadFile("/proc/uptime")
 	var f float64
 	if fs := strings.Fields(string(b)); len(fs) > 0 {
@@ -28,6 +31,9 @@ func uptime() time.Duration {
 }
 
 func cpuModel() (string, int) {
+	if isBSD() {
+		return bsdSysctl("hw.model"), runtime.NumCPU()
+	}
 	b, _ := os.ReadFile("/proc/cpuinfo")
 	model := ""
 	for _, l := range strings.Split(string(b), "\n") {
@@ -52,6 +58,9 @@ func apacheVersion() string {
 	bin := "/usr/sbin/apache2"
 	if osInfo.Family == "rhel" {
 		bin = "/usr/sbin/httpd"
+	}
+	if isBSD() {
+		bin = bsdApacheBin
 	}
 	out, _ := runTimeout(10*time.Second, "", bin, "-v")
 	if m := reApacheVer.FindStringSubmatch(out); m != nil {
@@ -139,20 +148,24 @@ func registerSystem() {
 		host, _ := os.Hostname()
 		model, cores := cpuModel()
 		mt, ma := memInfo()
-		kernel := ""
-		if b, err := os.ReadFile("/proc/sys/kernel/osrelease"); err == nil {
-			kernel = strings.TrimSpace(string(b))
-		}
+		kernel := kernelRelease()
 		mu.Lock()
 		nSites, nDBs := len(store.Sites), len(store.DBs)
 		mu.Unlock()
 		var svcs []map[string]any
 		for _, s := range services {
 			name := s.Name
+			if isBSD() && name == "named" {
+				continue
+			}
 			if name == "cron" {
 				name = cronService()
 			}
-			svcs = append(svcs, map[string]any{"name": name, "title": s.Title, "active": serviceActive(name)})
+			title := s.Title
+			if isBSD() && name == "named" {
+				title = "DNS-сервер NSD"
+			}
+			svcs = append(svcs, map[string]any{"name": name, "title": title, "active": serviceActive(name)})
 		}
 		mu.Lock()
 		mailReady := store.Mail.Ready
@@ -222,6 +235,10 @@ func registerSystem() {
 		// Ответ успевает уйти в браузер, затем systemd корректно останавливает службы.
 		go func() {
 			time.Sleep(3 * time.Second)
+			if isBSD() {
+				run("shutdown", "-r", "now")
+				return
+			}
 			run("systemctl", "reboot")
 		}()
 		return map[string]string{"info": "Сервер перезагружается"}, nil
@@ -235,7 +252,7 @@ func registerSystem() {
 		for _, s := range services {
 			ok = ok || s.Name == in.Name
 		}
-		ok = ok || in.Name == "lsws" && olsManaged() || in.Name == cronService() || in.Name == apacheService() || strings.HasSuffix(in.Name, "-fpm") && svcVersion(in.Name) != ""
+		ok = ok || in.Name == "lsws" && olsManaged() || in.Name == cronService() || in.Name == apacheService() || strings.HasSuffix(in.Name, "-fpm") && svcVersion(in.Name) != "" || isBSD() && in.Name == "php_fpm"
 		mu.Lock()
 		ok = ok || store.Mail.Ready && (in.Name == "postfix" || in.Name == "dovecot" || in.Name == "opendkim")
 		mu.Unlock()

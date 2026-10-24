@@ -51,7 +51,7 @@ function dashboardServiceState(state) {
   return ({running: ['Работает', 'ok'], stopped: ['Остановлен', 'err'], failed: ['Ошибка', 'err'], missing: ['Не установлен', 'off'], masked: ['Заблокирован', 'err'], changing: ['Переходное состояние', 'warn'], unknown: ['Нет данных', 'warn']})[state] || ['Нет данных', 'warn'];
 }
 function dashboardServiceTitle(s) {
-  const titles = {'nginx':'Веб-сервер nginx','mariadb':'СУБД MariaDB','pure-ftpd':'FTP-сервер','cron':'Планировщик cron','crond':'Планировщик cron','named':'DNS-сервер BIND','rspamd':'Антиспам · Rspamd'};
+  const titles = {'nginx':'Веб-сервер nginx','mariadb':'СУБД MariaDB','pure-ftpd':'FTP-сервер','cron':'Планировщик cron','crond':'Планировщик cron','named':(App.me && App.me.family === 'freebsd' ? 'DNS-сервер NSD' : 'DNS-сервер BIND'),'rspamd':'Антиспам · Rspamd'};
   return titles[s.name] || s.title;
 }
 function dashboardNeedsAttention(service) { return !['running', 'missing'].includes(service.state); }
@@ -253,7 +253,7 @@ async function siteForm(edit) {
       { name: 'user', label: 'Владелец (системный пользователь)', type: 'select', options: users, value: '', show: () => isNew },
       { name: 'kind', label: 'Что за сайт?', type: 'select', value: 'php', show: () => isNew, options: (meta.kinds || []).map((k) => [k.id, (window.PanelLanguage?.language === 'en' && k.name_en) || k.name]) },
       { type: 'html', show: () => isNew, html: (v) => { const k = (meta.kinds || []).find((x) => x.id === v.kind); return k ? `<p class="hint">${h((window.PanelLanguage?.language === 'en' && k.desc_en) || k.desc)}</p>` : ''; } },
-      { name: 'mode', label: 'Режим работы', type: 'seg', value: s.mode === 'php' && ['apache', 'openlitespeed'].includes(s.backend) ? s.backend : (s.mode || 'php'), options: [['php', 'nginx + PHP-FPM'], ['apache', 'nginx + Apache'], ['openlitespeed', 'nginx + OpenLiteSpeed'], ['static', 'Только статика'], ['proxy', 'Прокси']],
+      { name: 'mode', label: 'Режим работы', type: 'seg', value: s.mode === 'php' && ['apache', 'openlitespeed'].includes(s.backend) ? s.backend : (s.mode || 'php'), options: [['php', 'nginx + PHP-FPM'], ['apache', 'nginx + Apache'], ['openlitespeed', 'nginx + OpenLiteSpeed'], ['static', 'Только статика'], ['proxy', 'Прокси']].filter((o) => !(App.me && App.me.family === 'freebsd' && ['openlitespeed'].includes(o[0]))),
         hint: 'Apache поддерживает .htaccess; OpenLiteSpeed — правила Rewrite в .htaccess. Во всех режимах PHP работает через PHP-FPM. OpenLiteSpeed устанавливается при первом выборе. После изменения .htaccess перезапустите OpenLiteSpeed в разделе «Информация о сервере».' },
       { name: 'php', label: 'Версия PHP', type: 'select', options: php, value: s.php || meta.default_php || '8.3', show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode), hint: 'Если версия не установлена, панель установит её при сохранении (2–5 минут). <a href="#/php">Все версии PHP</a>' },
       { name: 'php_profile', label: 'Нагрузка на PHP', type: 'select', value: s.php_profile || '', show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode),
@@ -570,8 +570,8 @@ page('dns', {
     const d = await api('dns.list');
     if (!view.isConnected) return;
     if (params.zone) return zonePage(view, params.zone);
-    head(view, 'Управление DNS', { sub: d.installed ? (d.active ? '' : '<span class="tag warn">DNS-сервер BIND остановлен</span>') : '<span class="tag warn">DNS-сервер BIND не установлен</span>', actions: [
-      d.installed ? { t: 'Создать зону', i: 'plus', primary: true, fn: () => zoneForm(d) } : { t: 'Установить BIND', i: 'download', primary: true, fn: async () => { toast('Устанавливаю BIND…'); try { await api('dns.install'); toast('Установлен', 'ok'); route(); } catch (e) { fail(e); } } },
+    head(view, 'Управление DNS', { sub: d.installed ? (d.active ? '' : '<span class="tag warn">' + (App.me && App.me.family === 'freebsd' ? 'DNS-сервер NSD остановлен' : 'DNS-сервер BIND остановлен') + '</span>') : '<span class="tag warn">' + (App.me && App.me.family === 'freebsd' ? 'DNS-сервер NSD не установлен' : 'DNS-сервер BIND не установлен') + '</span>', actions: [
+      d.installed ? { t: 'Создать зону', i: 'plus', primary: true, fn: () => zoneForm(d) } : { t: (App.me && App.me.family === 'freebsd' ? 'Установить NSD' : 'Установить BIND'), i: 'download', primary: true, fn: async () => { toast(App.me && App.me.family === 'freebsd' ? 'Устанавливаю NSD…' : 'Устанавливаю BIND…'); try { await api('dns.install'); toast('Установлен', 'ok'); route(); } catch (e) { fail(e); } } },
     ] });
     const p = panel(view);
     table(p, {

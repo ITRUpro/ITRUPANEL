@@ -31,7 +31,7 @@ func rspamdDomainSettings(m MailState) string {
 func webmailRoot() string {
 	share, _ := roundcubePaths()
 	root := "/var/lib/roundcube"
-	if osInfo.Family == "rhel" {
+	if osInfo.Family == "rhel" || isBSD() {
 		root = share
 	}
 	if fileExists(root + "/public_html/index.php") {

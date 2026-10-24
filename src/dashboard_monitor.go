@@ -67,7 +67,7 @@ func dashboardMonitor(ctx context.Context) (any, error) {
 	host, _ := os.Hostname()
 	arch := runtime.GOARCH
 	model, cores := cpuModel()
-	kernel, _ := os.ReadFile("/proc/sys/kernel/osrelease")
+	kernel := kernelRelease()
 	mt, ma := memInfo()
 	dt, du := diskUsage("/")
 	ips := []string{}
@@ -86,6 +86,9 @@ func dashboardMonitor(ctx context.Context) (any, error) {
 	}
 	for _, s := range services {
 		name := s.Name
+		if isBSD() && name == "named" {
+			continue
+		}
 		if name == "cron" {
 			name = cronService()
 		}
@@ -94,13 +97,17 @@ func dashboardMonitor(ctx context.Context) (any, error) {
 	for _, v := range phpInstalled() {
 		add(phpService(v), "PHP-FPM "+v)
 	}
-	for _, s := range []struct{ name, title string }{{"postfix", "SMTP · Postfix"}, {"dovecot", "IMAP · Dovecot"}, {"opendkim", "DKIM · OpenDKIM"}, {"rspamd", "Антиспам · Rspamd"}, {"lsws", "OpenLiteSpeed"}, {apacheService(), "Apache"}} {
+	extra := []struct{ name, title string }{{"postfix", "SMTP · Postfix"}, {"dovecot", "IMAP · Dovecot"}, {"opendkim", "DKIM · OpenDKIM"}, {"rspamd", "Антиспам · Rspamd"}, {"lsws", "OpenLiteSpeed"}, {apacheService(), "Apache"}}
+	if isBSD() {
+		extra = nil
+	}
+	for _, s := range extra {
 		add(s.name, s.title)
 	}
 	if cfg.Dry {
 		host, model, cores = "server.example.com", "AMD EPYC", 4
 		arch = "amd64"
-		kernel = []byte("6.12.0-amd64")
+		kernel = "6.12.0-amd64"
 		mt, ma, dt, du = 8<<30, 6<<30, 80<<30, 36<<30
 		ips = []string{"203.0.113.10"}
 		zone, offset = "UTC", 0
@@ -115,6 +122,13 @@ func dashboardMonitor(ctx context.Context) (any, error) {
 			if list[i].Name == "rspamd" {
 				list[i].State = "stopped"
 				list[i].Memory = nil
+			}
+		}
+	} else if isBSD() {
+		for i := range list {
+			list[i].State = "stopped"
+			if bsdServiceActive(bsdRCName(list[i].Name)) {
+				list[i].State = "running"
 			}
 		}
 	} else {
@@ -157,5 +171,5 @@ func dashboardMonitor(ctx context.Context) (any, error) {
 	if cfg.Dry {
 		up = 9*86400 + 6*3600
 	}
-	return map[string]any{"services": list, "updated": time.Now(), "hostname": host, "ips": ips, "os": osInfo.Pretty, "kernel": strings.TrimSpace(string(kernel)), "arch": arch, "cpu": model, "cores": cores, "mem_total": mt, "mem_used": used, "disk_total": dt, "disk_used": du, "uptime": up, "timezone": zone, "utc_offset": offset, "version": Version}, nil
+	return map[string]any{"services": list, "updated": time.Now(), "hostname": host, "ips": ips, "os": osInfo.Pretty, "kernel": kernel, "arch": arch, "cpu": model, "cores": cores, "mem_total": mt, "mem_used": used, "disk_total": dt, "disk_used": du, "uptime": up, "timezone": zone, "utc_offset": offset, "version": Version}, nil
 }

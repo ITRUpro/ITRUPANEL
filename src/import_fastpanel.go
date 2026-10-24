@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"regexp"
 	"sort"
 	"strings"
@@ -320,7 +319,10 @@ func fpLoadMail(ctx context.Context, r impRunner) (*fpMailSource, error) {
 // fpMailExtract копирует письма ящика (Maildir) в Maildir нового ящика от имени пользователя почты.
 func fpMailExtract(ctx context.Context, r impRunner, src, address string) (int64, error) {
 	dst := mailHome(address) + "/Maildir"
-	cmd := exec.CommandContext(ctx, "runuser", "-u", "itrumail", "--", "tar", "-xpf", "-", "-C", dst)
+	cmd, err := asUserCommand(ctx, "itrumail", "tar", "-xpf", "-", "-C", dst)
+	if err != nil {
+		return 0, err
+	}
 	in, err := cmd.StdinPipe()
 	if err != nil {
 		return 0, err

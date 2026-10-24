@@ -25,7 +25,7 @@ var webFS embed.FS
 //go:embed templates
 var tplFS embed.FS
 
-var Version = "0.2.20"
+var Version = "0.2.21"
 
 type Config struct {
 	Listen   string // адрес панели, по умолчанию :3333
@@ -88,6 +88,7 @@ func main() {
 		}
 		return
 	case "update-worker":
+		detectOS() // имена архива и программы зависят от ОС (Linux или FreeBSD)
 		if err := runPanelUpdateWorker(flag.Arg(1)); err != nil {
 			log.Fatal(err)
 		}

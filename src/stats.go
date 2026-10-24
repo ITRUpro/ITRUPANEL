@@ -38,6 +38,9 @@ var (
 )
 
 func cpuTimes() (idle, total uint64) {
+	if isBSD() {
+		return bsdCPUTimes()
+	}
 	b, _ := os.ReadFile("/proc/stat")
 	line, _, _ := strings.Cut(string(b), "\n")
 	f := strings.Fields(line)
@@ -59,6 +62,9 @@ func cpuTimes() (idle, total uint64) {
 }
 
 func memInfo() (total, avail uint64) {
+	if isBSD() {
+		return bsdMemInfo()
+	}
 	f, err := os.Open("/proc/meminfo")
 	if err != nil {
 		return
@@ -79,6 +85,9 @@ func memInfo() (total, avail uint64) {
 }
 
 func netBytes() (rx, tx uint64) {
+	if isBSD() {
+		return bsdNetBytes()
+	}
 	b, _ := os.ReadFile("/proc/net/dev")
 	lines := strings.Split(string(b), "\n")
 	if len(lines) < 3 {
@@ -105,12 +114,16 @@ func diskUsage(path string) (total, used uint64) {
 	if syscall.Statfs(path, &st) != nil {
 		return
 	}
-	total = st.Blocks * uint64(st.Bsize)
-	free := st.Bavail * uint64(st.Bsize)
+	// Типы полей Statfs_t различаются между Linux и FreeBSD, поэтому приводим явно.
+	total = uint64(st.Blocks) * uint64(st.Bsize)
+	free := uint64(st.Bavail) * uint64(st.Bsize)
 	return total, total - free
 }
 
 func loadAvg() []float64 {
+	if isBSD() {
+		return bsdLoadAvg()
+	}
 	b, _ := os.ReadFile("/proc/loadavg")
 	f := strings.Fields(string(b))
 	out := []float64{0, 0, 0}
@@ -375,7 +388,12 @@ func registerStats() {
 	})
 	api("stats.disk", func(q *Req) (any, error) {
 		var parts []map[string]any
-		if b, err := os.ReadFile("/proc/mounts"); err == nil {
+		if isBSD() {
+			for _, m := range bsdMounts() {
+				t, u := diskUsage(m[1])
+				parts = append(parts, map[string]any{"dev": m[0], "mount": m[1], "fs": m[2], "total": t, "used": u})
+			}
+		} else if b, err := os.ReadFile("/proc/mounts"); err == nil {
 			seen := map[string]bool{}
 			for _, l := range strings.Split(string(b), "\n") {
 				f := strings.Fields(l)
@@ -486,13 +504,14 @@ func duBytes(paths []string) map[string]int64 {
 		}
 		return out
 	}
-	text, _ := runTimeout(3*time.Minute, "", "du", append([]string{"-sxb"}, exist...)...)
+	flags, unit := duFlags()
+	text, _ := runTimeout(3*time.Minute, "", "du", append([]string{flags}, exist...)...)
 	for _, line := range strings.Split(text, "\n") {
 		f := strings.SplitN(line, "\t", 2)
 		if len(f) == 2 {
 			var n int64
 			fmt.Sscan(f[0], &n)
-			out[f[1]] = n
+			out[f[1]] = n * unit
 		}
 	}
 	return out

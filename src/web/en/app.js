@@ -268,7 +268,9 @@ function renderNavigation(query = '', revealActive = false) {
     document.getElementById(button.getAttribute('aria-controls')).hidden=!open;
   });
 }
-const allowedPage = key => !NAV.some(n=>n[0]===key && n[3]==='soon');
+// На FreeBSD нет Docker, а «Серверы БД» работают в контейнерах Docker.
+const BSD_HIDDEN = ['docker', 'dbservers'];
+const allowedPage = key => !NAV.some(n=>n[0]===key && n[3]==='soon') && !(App.me && App.me.family==='freebsd' && BSD_HIDDEN.includes(key));
 const navTitle = (k) => (NAV.find((n) => n[0] === k) || [])[1] || (App.pages[k] && App.pages[k].title) || k;
 const navIcon = (k) => (NAV.find((n) => n[0] === k) || [])[2] || 'file';
 

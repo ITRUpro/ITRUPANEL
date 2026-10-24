@@ -435,6 +435,9 @@ func applyMailDNS(v mailDNSView, token string) (err error) {
 		backups[path] = backup{b, mode, e == nil}
 	}
 	reload := func() error {
+		if isBSD() {
+			return nsdReload()
+		}
 		if _, e := runTimeout(15*time.Second, "", "rndc", "reload"); e == nil {
 			return nil
 		} else if !osInfo.Systemd {
@@ -500,12 +503,14 @@ func applyMailDNS(v mailDNSView, token string) (err error) {
 		if e := writeFile(path, []byte(renderZone(z)), 0644); e != nil {
 			return e
 		}
-		if _, e := runTimeout(15*time.Second, "", "named-checkzone", n, P(path)); e != nil {
+		if _, e := dnsCheckZone(n, P(path)); e != nil {
 			return e
 		}
 	}
-	if _, e := runTimeout(15*time.Second, "", "named-checkconf"); e != nil {
-		return e
+	if !isBSD() {
+		if _, e := runTimeout(15*time.Second, "", "named-checkconf"); e != nil {
+			return e
+		}
 	}
 	if e := reload(); e != nil {
 		return e

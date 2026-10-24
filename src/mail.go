@@ -312,7 +312,7 @@ UserID opendkim
 Mode sv
 Canonicalization relaxed/simple
 Socket inet:8891@127.0.0.1
-PidFile /run/opendkim/opendkim.pid
+PidFile ` + opendkimPidFile() + `
 KeyTable file:/etc/opendkim/itrupanel/key.table
 SigningTable refile:/etc/opendkim/itrupanel/sign.table
 InternalHosts 127.0.0.1
@@ -532,11 +532,13 @@ func applyMail(m MailState) (undo func() error, err error) {
 		if _, err = runTimeout(30*time.Second, "", "rspamadm", "configtest"); err != nil {
 			return
 		}
-		if _, err = run("systemctl", "daemon-reload"); err != nil {
-			return
-		}
-		if _, err = run("systemctl", "unmask", "rspamd"); err != nil {
-			return
+		if !isBSD() {
+			if _, err = run("systemctl", "daemon-reload"); err != nil {
+				return
+			}
+			if _, err = run("systemctl", "unmask", "rspamd"); err != nil {
+				return
+			}
 		}
 	}
 	if m.Webmail.Ready && touched("web") {
@@ -579,7 +581,7 @@ func applyMail(m MailState) (undo func() error, err error) {
 // (например, общие сертификаты) относятся ко всем службам.
 func mailFileComponent(p string) string {
 	switch {
-	case strings.HasPrefix(p, "/etc/rspamd/"), p == "/etc/itrupanel/rspamd-redis.conf", p == "/etc/systemd/system/itrupanel-spam-redis.service":
+	case strings.HasPrefix(p, "/etc/rspamd/"), p == "/etc/itrupanel/rspamd-redis.conf", p == "/etc/systemd/system/itrupanel-spam-redis.service", p == bsdSpamRedisRC:
 		return "spam"
 	case p == roundcubeConfigPath(), strings.HasPrefix(p, webmailData+"/"), strings.HasPrefix(p, vhostDir+"/"):
 		return "web"
@@ -624,8 +626,8 @@ func changeMail(fn func(*MailState) error) error {
 func setupMail(host, cert string, j *Job) error {
 	mailSetupMu.Lock()
 	defer mailSetupMu.Unlock()
-	if osInfo.Family != "debian" && osInfo.Family != "rhel" {
-		return errf("Автоустановка почты доступна на Debian, Ubuntu, AlmaLinux, Rocky, CentOS Stream и RHEL")
+	if osInfo.Family != "debian" && osInfo.Family != "rhel" && !isBSD() {
+		return errf("Автоустановка почты доступна на Debian, Ubuntu, AlmaLinux, Rocky, CentOS Stream, RHEL и FreeBSD")
 	}
 	jobStage(j, "Проверка существующих почтовых служб")
 	if !fileExists(mailOwned) && !cfg.Dry {
@@ -645,7 +647,7 @@ func setupMail(host, cert string, j *Job) error {
 	if err := writeFile(mailOwned, []byte("ITRUPANEL\n"), 0600); err != nil {
 		return err
 	}
-	if !cfg.Dry && !osInfo.Systemd {
+	if !cfg.Dry && !osInfo.Systemd && !isBSD() {
 		return errf("Установка почты требует systemd")
 	}
 	mu.Lock()
@@ -655,12 +657,16 @@ func setupMail(host, cert string, j *Job) error {
 	defer func() {
 		if !setupComplete {
 			for _, svc := range []string{"postfix", "dovecot", "opendkim"} {
+				if isBSD() {
+					service("stop", svc)
+					continue
+				}
 				run("systemctl", "stop", svc)
 				run("systemctl", "mask", svc)
 			}
 		}
 	}()
-	if !ready {
+	if !ready && !isBSD() {
 		for _, svc := range []string{"postfix", "dovecot", "opendkim"} {
 			if _, err := run("systemctl", "mask", svc); err != nil {
 				return err
@@ -669,7 +675,9 @@ func setupMail(host, cert string, j *Job) error {
 	}
 	jobStage(j, "Установка Postfix, Dovecot и OpenDKIM")
 	pkgs := []string{"postfix", "dovecot-core", "dovecot-imapd", "dovecot-lmtpd", "opendkim", "opendkim-tools"}
-	if osInfo.Family == "rhel" {
+	if isBSD() {
+		pkgs = []string{"postfix", "dovecot", "opendkim"}
+	} else if osInfo.Family == "rhel" {
 		// OpenDKIM на RHEL-системах — в EPEL; Dovecot — одним пакетом с IMAP и LMTP
 		if err := ensureEPEL(j); err != nil {
 			return err
@@ -678,6 +686,11 @@ func setupMail(host, cert string, j *Job) error {
 	}
 	if err := installPackagesJob(j, pkgs...); err != nil {
 		return err
+	}
+	if isBSD() {
+		if err := bsdMailPrepare(); err != nil {
+			return err
+		}
 	}
 	version := "2.4.0"
 	if !cfg.Dry {
@@ -692,7 +705,11 @@ func setupMail(host, cert string, j *Job) error {
 	}
 	jobStage(j, "Создание хранилища почты и TLS")
 	if _, err := run("id", "itrumail"); err != nil || cfg.Dry {
-		if _, err := run("useradd", "--system", "--user-group", "--home-dir", mailRoot, "--shell", "/usr/sbin/nologin", "itrumail"); err != nil {
+		if isBSD() {
+			if err := bsdAddSystemUser("itrumail", mailRoot); err != nil {
+				return err
+			}
+		} else if _, err := run("useradd", "--system", "--user-group", "--home-dir", mailRoot, "--shell", "/usr/sbin/nologin", "itrumail"); err != nil {
 			return err
 		}
 	}
@@ -781,7 +798,9 @@ func setupMail(host, cert string, j *Job) error {
 		return err
 	}
 	for _, svc := range []string{"opendkim", "dovecot", "postfix"} {
-		if _, err = run("systemctl", "unmask", svc); err != nil {
+		if isBSD() {
+			// маскирование systemd во FreeBSD не нужно
+		} else if _, err = run("systemctl", "unmask", svc); err != nil {
 			undo()
 			return err
 		}

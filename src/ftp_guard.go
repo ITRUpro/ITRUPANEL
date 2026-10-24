@@ -13,7 +13,9 @@ import (
 )
 
 const ftpGuardJail = "itrupanel-ftp"
-const ftpGuardPath = "/etc/fail2ban/jail.d/itrupanel-ftp.local"
+
+var ftpGuardPath = "/etc/fail2ban/jail.d/itrupanel-ftp.local"
+
 const ftpGuardHeader = "# Managed by ITRUPANEL login protection\n"
 
 var ftpGuardMu sync.Mutex
@@ -34,7 +36,10 @@ func waitFTPGuard(timeout, interval time.Duration) error {
 		if _, last = runTimeout(remaining, "", "fail2ban-client", "ping"); last == nil {
 			return nil
 		}
-		state, _ := runTimeout(2*time.Second, "", "systemctl", "is-active", "fail2ban.service")
+		state := ""
+		if !isBSD() {
+			state, _ = runTimeout(2*time.Second, "", "systemctl", "is-active", "fail2ban.service")
+		}
 		if strings.TrimSpace(state) == "failed" {
 			return fmt.Errorf("Служба Fail2ban завершилась с ошибкой: %w", last)
 		}
@@ -49,6 +54,10 @@ func waitFTPGuard(timeout, interval time.Duration) error {
 }
 
 func ftpGuardStartupError(cause error) error {
+	if isBSD() {
+		tail, _ := runTimeout(5*time.Second, "", "tail", "-n", "40", "/var/log/fail2ban.log")
+		return fmt.Errorf("Не удалось запустить защиту FTP: %w\n%s", cause, strings.TrimSpace(tail))
+	}
 	state, _ := runTimeout(5*time.Second, "", "systemctl", "show", "fail2ban.service", "--property=ActiveState,SubState,Result,ExecMainStatus")
 	journal, _ := runTimeout(5*time.Second, "", "journalctl", "-u", "fail2ban.service", "-n", "40", "--no-pager", "-o", "cat")
 	if len(journal) > 12000 {
@@ -58,6 +67,9 @@ func ftpGuardStartupError(cause error) error {
 }
 
 func ftpGuardConfig(port int) string {
+	if isBSD() {
+		return bsdFTPGuardConfig(port)
+	}
 	return fmt.Sprintf(`%s[%s]
 enabled = true
 filter = pure-ftpd
@@ -121,6 +133,9 @@ func ftpNoResolve(conf string) string {
 func enableFTPGuard(j *Job, port int) (err error) {
 	ftpGuardMu.Lock()
 	defer ftpGuardMu.Unlock()
+	if isBSD() {
+		return enableFTPGuardBSD(j, port)
+	}
 	if !cfg.Dry && (!osInfo.Systemd || !have("pure-pw")) {
 		return errf("Требуются Pure-FTPd и systemd")
 	}

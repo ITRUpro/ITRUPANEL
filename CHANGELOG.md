@@ -2,6 +2,14 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.21
+
+- **FreeBSD 14 and 15 (beta)** with its own archive (`itrupanel-freebsd-<version>.zip`), installer (`install-freebsd.sh`), update script and online command: `fetch -o install.sh https://itrupanel.com/panel/install-itrupanel-freebsd.sh && sh install.sh`; updating from the panel works through a separately signed `latest-freebsd.json`
+- on FreeBSD: websites (nginx, Apache, PHP-FPM), MariaDB, FTP (pure-ftpd), SSL (certbot), mail (Postfix, Dovecot, OpenDKIM, Rspamd with its own Redis, Roundcube), DNS (NSD: the FreeBSD packages of BIND and Postfix cannot be installed together), antivirus (built-in, ClamAV), the firewall on pf, FTP protection (fail2ban with pf), backups, cron, the file manager and PHP extensions from FreeBSD packages
+- not on FreeBSD: OpenLiteSpeed, Docker and database servers (they run in Docker), the ionCube loader; only one PHP version is installed at a time because the FreeBSD packages php82–php85 conflict
+- tested with the real panel in FreeBSD 14.5 (install, reboot, update, every section above); the Linux code paths are unchanged
+- fixed: restoring files from a backup used `chown --no-dereference`, which only GNU `chown` understands
+
 ## 0.2.20
 
 - file editor: a **Save and close** button next to Save; code highlighting for copies and drafts such as `config.php.new` or `index.html.bak` (the language is taken from the real extension before the suffix `.new`, `.bak`, `.old`, `.orig`, `.dist`, `.sample`, `.disabled` and similar)

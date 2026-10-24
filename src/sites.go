@@ -27,8 +27,10 @@ const (
 	vhostDir  = "/etc/nginx/itrupanel/vhosts"
 	customDir = "/etc/nginx/itrupanel/custom"
 	acmeRoot  = "/var/www/itrupanel-acme"
-	sockDir   = "/run/itrupanel-php"
 )
+
+// sockDir — каталог сокетов PHP-FPM; на FreeBSD другой (detectFreeBSD).
+var sockDir = "/run/itrupanel-php"
 
 func vhostPath(d string) string  { return vhostDir + "/" + d + ".conf" }
 func customPath(d string) string { return customDir + "/" + d + ".conf" }
@@ -99,7 +101,11 @@ func ensureUser(name string) (*SiteUser, error) {
 	if _, err := run("id", name); err != nil || cfg.Dry {
 		// Подчинённые UID/GID (для rootless-контейнеров) пользователю сайта не нужны; без них
 		// useradd не падает, когда диапазон в /etc/subuid уже занят (AlmaLinux 10 и др.).
-		if _, err := run("useradd", "-K", "SUB_UID_COUNT=0", "-K", "SUB_GID_COUNT=0", "-m", "-d", home, "-s", "/bin/bash", "-U", name); err != nil {
+		if isBSD() {
+			if err := bsdAddUser(name, home); err != nil {
+				return nil, err
+			}
+		} else if _, err := run("useradd", "-K", "SUB_UID_COUNT=0", "-K", "SUB_GID_COUNT=0", "-m", "-d", home, "-s", "/bin/bash", "-U", name); err != nil {
 			return nil, err
 		}
 	}
@@ -110,7 +116,11 @@ func ensureUser(name string) (*SiteUser, error) {
 	run("chmod", "750", home, home+"/data", home+"/data/www")
 	run("chmod", "700", home+"/data/tmp", home+"/data/backup")
 	// веб-сервер должен читать файлы сайтов
-	run("usermod", "-aG", name, osInfo.WebUser)
+	if isBSD() {
+		bsdAddToGroup(osInfo.WebUser, name)
+	} else {
+		run("usermod", "-aG", name, osInfo.WebUser)
+	}
 	if osInfo.Family == "rhel" {
 		run("restorecon", "-R", home)
 	}
@@ -503,6 +513,11 @@ func createSiteJob(in siteIn, job *Job) (*Site, error) {
 		return nil, errf("Неизвестный веб-сервер")
 	}
 	if in.Backend == "openlitespeed" {
+		if err := bsdUnsupported("Режим с OpenLiteSpeed"); err != nil {
+			return nil, err
+		}
+	}
+	if in.Backend == "openlitespeed" {
 		mu.Unlock()
 		err := ensureOLSJob(job)
 		mu.Lock()
@@ -522,7 +537,7 @@ func createSiteJob(in siteIn, job *Job) (*Site, error) {
 	// выбранной версии PHP нет — ставим её (несколько минут), потом создаём сайт
 	if in.Mode == "php" && !phpIsInstalled(in.PHP) {
 		known := false
-		for _, v := range phpAll {
+		for _, v := range phpAllVersions() {
 			known = known || v == in.PHP
 		}
 		if !known {
@@ -785,7 +800,7 @@ func registerSites() {
 		}
 		email := store.Settings.Email
 		mu.Unlock()
-		return map[string]any{"php_profiles": phpProfileChoices(), "kinds": siteKindChoices(), "templates": siteTemplateChoices(), "users": users, "php": phpInstalled(), "php_all": phpAll, "apache": apacheReady(), "openlitespeed": olsInstalled() && olsManaged(), "default_php": defaultPHP(), "certs": certs, "email": email}, nil
+		return map[string]any{"php_profiles": phpProfileChoices(), "kinds": siteKindChoices(), "templates": siteTemplateChoices(), "users": users, "php": phpInstalled(), "php_all": phpAllVersions(), "apache": apacheReady(), "openlitespeed": olsInstalled() && olsManaged(), "default_php": defaultPHP(), "certs": certs, "email": email}, nil
 	})
 	apiOp("sites.save", "Сайт: сохранение", func(q *Req) (any, error) {
 		var in siteIn

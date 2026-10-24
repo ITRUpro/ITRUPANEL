@@ -387,6 +387,12 @@ func aptNetworkOptions() []string {
 	return []string{"-o", "Acquire::http::Timeout=20", "-o", "Acquire::https::Timeout=20", "-o", "Acquire::Retries=1", "-o", "DPkg::Lock::Timeout=60", "-o", "APT::Update::Error-Mode=any"}
 }
 func installPackagesJob(job *Job, pkgs ...string) error {
+	if isBSD() {
+		if err := bsdPkgCheck(pkgs...); err != nil {
+			return err
+		}
+		return liveCommand(job, 30*time.Minute, "pkg", append([]string{"install", "-y"}, pkgs...)...)
+	}
 	if osInfo.Family == "rhel" {
 		// Без необязательных зависимостей: меньше загрузка и память dnf на небольших серверах
 		return liveCommand(job, 15*time.Minute, "dnf", append([]string{"--setopt=timeout=30", "--setopt=retries=4", "--setopt=install_weak_deps=False", "install", "-y"}, pkgs...)...)

@@ -1,0 +1,47 @@
+#!/bin/sh
+# Copyright (c) 2026 Oleg Sergeevich Dmitriev (Дмитриев Олег Сергеевич). ITRUPANEL. Licensed under GPL-3.0-only (SPDX-License-Identifier: GPL-3.0-only). See LICENSE.txt
+# ITRUPANEL online installer for FreeBSD. Publish this file as /panel/install-itrupanel-freebsd.sh at itrupanel.com.
+set -eu
+PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH
+RELEASE=0.2.21
+ARCHIVE_SHA256=RELEASE_SHA256_PLACEHOLDER
+BASE_URL=https://itrupanel.com/panel
+fail() { echo "Ошибка: $*" >&2; exit 1; }
+
+if [ "${1:-}" = --help ]; then
+  echo 'Установка / обновление ITRUPANEL на FreeBSD 14/15: sh install.sh (от root).'
+  echo 'Новая установка: чистый сервер. PHP_VERSION=8.4 меняет версию PHP.'
+  exit 0
+fi
+[ "$#" = 0 ] || fail 'неизвестный параметр'
+[ "$(id -u)" = 0 ] || fail 'запустите команду из root-терминала сервера'
+[ "$(uname -s)" = FreeBSD ] || fail 'этот установщик только для FreeBSD; для Linux используйте install-itrupanel.sh'
+case "$(uname -m)" in amd64|x86_64|arm64|aarch64) ;; *) fail 'поддерживаются amd64 и arm64' ;; esac
+
+MODE=install
+if [ -e /usr/local/itrupanel/etc/.admin-set ]; then
+  [ -x /usr/local/itrupanel/itrupanel ] && [ -s /usr/local/itrupanel/etc/state.json ] || fail 'найдена неполная установка; проверьте её перед повтором'
+  MODE=update
+fi
+
+# Обновление, запущенное из оболочки панели, должно пережить её остановку: update-freebsd.sh сам передаёт
+# работу отдельному процессу, поэтому здесь достаточно скачать архив и запустить его.
+WORK_DIR=$(mktemp -d /var/tmp/itrupanel-download.XXXXXXXX) || fail 'не удалось создать рабочую папку в /var/tmp'
+trap 'rm -rf -- "$WORK_DIR"' EXIT
+AVAIL=$(df -k "$WORK_DIR" | awk 'NR == 2 {print $4}')
+case "$AVAIL" in ''|*[!0-9]*) fail 'не удалось определить свободное место в /var/tmp' ;; esac
+[ "$AVAIL" -ge 102400 ] || fail 'для скачивания и распаковки нужно не менее 100 МБ свободного места в /var/tmp'
+
+echo "==> Скачивание ITRUPANEL $RELEASE для FreeBSD ($MODE)"
+fetch -q -T 30 -o "$WORK_DIR/panel.zip" "$BASE_URL/itrupanel-freebsd-$RELEASE.zip" || fail 'не удалось скачать архив'
+[ "$(sha256 -q "$WORK_DIR/panel.zip")" = "$ARCHIVE_SHA256" ] || fail 'контрольная сумма архива не совпала; установка остановлена'
+tar -xf "$WORK_DIR/panel.zip" -C "$WORK_DIR"
+[ -f "$WORK_DIR/itrupanel/install-freebsd.sh" ] || fail 'в архиве нет install-freebsd.sh'
+cd "$WORK_DIR/itrupanel"
+if [ "$MODE" = update ]; then
+  # Копия сценария в /var/tmp не удаляется до конца отдельного процесса обновления
+  trap - EXIT
+  exec sh update-freebsd.sh
+fi
+exec sh install-freebsd.sh

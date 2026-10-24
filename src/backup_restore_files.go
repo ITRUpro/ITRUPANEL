@@ -10,7 +10,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -157,7 +156,8 @@ func runRestoreWorker(site *Site, source, rel string) error {
 		}
 		return copyRestoredFiles(P(userHome(site.User)), P(site.Root), P(source))
 	}
-	if _, e := run("chown", "-R", "--no-dereference", site.User+":"+site.User, source); e != nil {
+	// -h (не следовать по ссылкам) есть и в GNU chown, и во FreeBSD; --no-dereference только в GNU
+	if _, e := run("chown", "-R", "-h", site.User+":"+site.User, source); e != nil {
 		return e
 	}
 	// Владелец сайта должен пройти к распакованной копии: папка копий и временная папка — только
@@ -165,6 +165,15 @@ func runRestoreWorker(site *Site, source, rel string) error {
 	for _, dir := range []string{backupDir, filepath.Dir(source)} {
 		if e := os.Chmod(dir, 0711); e != nil {
 			return e
+		}
+	}
+	// Во FreeBSD /var/backups закрыт для всех, кроме root (0750): добавляем проход, иначе владелец сайта
+	// не дойдёт до распакованной копии.
+	if parent := filepath.Dir(backupDir); parent != "/" {
+		if st, e := os.Stat(parent); e == nil && st.Mode().Perm()&0001 == 0 {
+			if e = os.Chmod(parent, st.Mode().Perm()|0001); e != nil {
+				return e
+			}
 		}
 	}
 	executable, e := os.Executable()
@@ -178,7 +187,10 @@ func runRestoreWorker(site *Site, source, rel string) error {
 	body, _ := json.Marshal(args)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "runuser", "-u", site.User, "--", executable, "restore-files-worker")
+	cmd, e := asUserCommand(ctx, site.User, executable, "restore-files-worker")
+	if e != nil {
+		return e
+	}
 	cmd.Env = []string{"PATH=" + systemPath(""), "LANG=C.UTF-8"}
 	cmd.Stdin = bytes.NewReader(body)
 	out, e := cmd.CombinedOutput()

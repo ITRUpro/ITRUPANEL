@@ -120,6 +120,9 @@ func registerMailExtras() {
 
 // Extra generated secrets are never returned by mail.list or written to job logs.
 func mailFileMode(path string) os.FileMode {
+	if path == bsdSpamRedisRC {
+		return 0755
+	}
 	if path == "/etc/postfix/itrupanel/sni" {
 		return 0600
 	}
@@ -140,7 +143,7 @@ func mailFileGroup(path string) string {
 	case "/etc/dovecot/itrupanel-users":
 		return "dovecot"
 	case "/etc/rspamd/local.d/redis.conf", "/etc/rspamd/override.d/worker-controller.inc":
-		return "_rspamd"
+		return spamUser()
 	case "/etc/itrupanel/rspamd-redis.conf":
 		_, user := spamRedisServer()
 		return user

@@ -25,6 +25,9 @@ func apacheService() string {
 }
 
 func apacheSiteDir() string {
+	if isBSD() {
+		return bsdApacheDir + "/itrupanel"
+	}
 	if osInfo.Family == "rhel" {
 		return "/etc/httpd/itrupanel"
 	}
@@ -37,6 +40,9 @@ func apacheReady() bool {
 	if !apacheInstalled() {
 		return false
 	}
+	if isBSD() {
+		return strings.HasPrefix(readFile(bsdApacheConf), bsdApacheMark)
+	}
 	if osInfo.Family == "rhel" {
 		return fileExists("/etc/httpd/conf.d/itrupanel.conf")
 	}
@@ -48,7 +54,7 @@ func apacheReady() bool {
 // PHP-FPM, а Roundcube — через nginx. Apache панели возвращается к mpm_event; Apache, поставленный
 // только как зависимость, останавливается — иначе он спорит с nginx за порт 80.
 func cleanupPackagedApache() {
-	if osInfo.Family == "rhel" || !apacheInstalled() {
+	if osInfo.Family == "rhel" || isBSD() || !apacheInstalled() {
 		return
 	}
 	run("a2disconf", "-q", "roundcube")
@@ -68,6 +74,9 @@ func cleanupPackagedApache() {
 }
 
 func apacheInstalled() bool {
+	if isBSD() {
+		return fileExists(bsdApacheBin)
+	}
 	if osInfo.Family == "rhel" {
 		return fileExists("/usr/sbin/httpd")
 	}
@@ -78,6 +87,9 @@ func apacheInstalled() bool {
 func ensureApache() error {
 	phpInstallMu.Lock()
 	defer phpInstallMu.Unlock()
+	if isBSD() {
+		return bsdEnsureApache()
+	}
 	if !apacheInstalled() {
 		pkg := "apache2"
 		if osInfo.Family == "rhel" {
@@ -130,6 +142,9 @@ func ensureApache() error {
 }
 
 func apacheTest() (string, error) {
+	if isBSD() {
+		return run(bsdApacheBin, "-t")
+	}
 	if osInfo.Family == "rhel" {
 		return run("httpd", "-t")
 	}

@@ -156,8 +156,8 @@ php_admin_flag[display_errors] = off
 func setupRoundcube(host, cert string, j *Job) (err error) {
 	mailSetupMu.Lock()
 	defer mailSetupMu.Unlock()
-	if (osInfo.Family != "debian" && osInfo.Family != "rhel") || (!cfg.Dry && !osInfo.Systemd) {
-		return errf("Установка Roundcube требует Debian, Ubuntu или RHEL-систему с systemd")
+	if !isBSD() && ((osInfo.Family != "debian" && osInfo.Family != "rhel") || (!cfg.Dry && !osInfo.Systemd)) {
+		return errf("Установка Roundcube требует Debian, Ubuntu, RHEL-систему с systemd или FreeBSD")
 	}
 	share, confDir := roundcubePaths()
 	mu.Lock()
@@ -172,7 +172,9 @@ func setupRoundcube(host, cert string, j *Job) (err error) {
 	}
 	if !fileExists(webmailOwned) && !cfg.Dry {
 		existing := fileExists("/var/lib/roundcube/index.php") || fileExists("/etc/roundcube/config.inc.php")
-		if osInfo.Family == "rhel" {
+		if isBSD() {
+			existing = fileExists(bsdPrefix + "/www/roundcube/index.php")
+		} else if osInfo.Family == "rhel" {
 			_, e := run("rpm", "-q", "roundcubemail")
 			existing = e == nil
 		}
@@ -185,12 +187,23 @@ func setupRoundcube(host, cert string, j *Job) (err error) {
 	}
 	// Use a stable PHP version independent of the versions selected for websites.
 	v := "8.3"
-	jobStage(j, "Подготовка PHP 8.3 для Roundcube")
+	if isBSD() {
+		// на FreeBSD работает одна версия PHP: Roundcube берёт её
+		if cur := bsdInstalledPHP(); cur != "" {
+			v = cur
+		}
+	}
+	jobStage(j, "Подготовка PHP "+v+" для Roundcube")
 	if err = phpInstall(v); err != nil {
 		return
 	}
 	jobStage(j, "Установка Roundcube из репозитория ОС")
-	if osInfo.Family == "rhel" {
+	if isBSD() {
+		phpInstallMu.Lock()
+		p := "php" + vv(v)
+		err = installPackagesJob(j, "roundcube-"+p, p+"-pdo_sqlite", p+"-sqlite3", p+"-mbstring", p+"-intl", p+"-xml", p+"-curl", p+"-zip", p+"-gd")
+		phpInstallMu.Unlock()
+	} else if osInfo.Family == "rhel" {
 		// Roundcube на RHEL-системах — пакет roundcubemail из EPEL; модули PHP 8.3 уже поставил phpInstall
 		if err = ensureEPEL(j); err != nil {
 			return
@@ -211,7 +224,12 @@ func setupRoundcube(host, cert string, j *Job) (err error) {
 	}
 	cleanupPackagedApache()
 	if _, e := run("id", "itruroundcube"); e != nil || cfg.Dry {
-		if _, err = run("useradd", "--system", "--user-group", "--home-dir", webmailData, "--shell", "/usr/sbin/nologin", "itruroundcube"); err != nil {
+		if isBSD() {
+			err = bsdAddSystemUser("itruroundcube", webmailData)
+		} else {
+			_, err = run("useradd", "--system", "--user-group", "--home-dir", webmailData, "--shell", "/usr/sbin/nologin", "itruroundcube")
+		}
+		if err != nil {
 			return
 		}
 	}
@@ -285,7 +303,10 @@ func setupRoundcube(host, cert string, j *Job) (err error) {
 	}
 	extra[phpPoolDir(v)+"/itru_roundcube.conf"] = []byte(roundcubePool())
 	timers := []string{"roundcube-gc.timer", "roundcube-cleandb.timer"}
-	if osInfo.Family == "rhel" {
+	if isBSD() {
+		timers = nil
+		extra[bsdPrefix+"/etc/newsyslog.conf.d/itrupanel-roundcube.conf"] = []byte(webmailData + "/logs/*.log itruroundcube:itruroundcube 640 4 * @W0 GJC\n")
+	} else if osInfo.Family == "rhel" {
 		// В пакете EPEL нет systemd-таймеров, а его cron-задание запускается от apache без доступа к настройкам
 		for p, b := range roundcubeTimerFiles(v) {
 			extra[p] = b
@@ -299,7 +320,9 @@ func setupRoundcube(host, cert string, j *Job) (err error) {
 			extra["/etc/systemd/system/roundcube-"+task+".service.d/itrupanel.conf"] = []byte("[Service]\nUser=itruroundcube\nGroup=itruroundcube\nExecStart=\nExecStart=" + phpCLI(v) + " " + share + "/bin/" + task + ".sh\nReadWritePaths=\nReadWritePaths=" + webmailData + "\n")
 		}
 	}
-	extra["/etc/logrotate.d/itrupanel-roundcube"] = []byte(webmailData + "/logs/*.log {\n weekly\n rotate 4\n compress\n missingok\n notifempty\n su itruroundcube itruroundcube\n create 0640 itruroundcube itruroundcube\n}\n")
+	if !isBSD() {
+		extra["/etc/logrotate.d/itrupanel-roundcube"] = []byte(webmailData + "/logs/*.log {\n weekly\n rotate 4\n compress\n missingok\n notifempty\n su itruroundcube itruroundcube\n create 0640 itruroundcube itruroundcube\n}\n")
+	}
 
 	undoWeb, e := writeMailExtraFiles(extra)
 	if e != nil {
@@ -309,7 +332,9 @@ func setupRoundcube(host, cert string, j *Job) (err error) {
 	defer func() {
 		if !committed {
 			undoWeb()
-			run("systemctl", "daemon-reload")
+			if !isBSD() {
+				run("systemctl", "daemon-reload")
+			}
 			service("reload", phpService(v))
 			nginxTestReload()
 		}
@@ -329,7 +354,7 @@ func setupRoundcube(host, cert string, j *Job) (err error) {
 	if !cfg.Dry && fileExists(webmailData+"/roundcube.sqlite") {
 		backup := webmailData + "/roundcube-before-update-" + time.Now().UTC().Format("20060102T150405") + ".sqlite"
 		code := `$s=new SQLite3($argv[1],SQLITE3_OPEN_READONLY);$d=new SQLite3($argv[2]);if(!$s->backup($d)){exit(1);}chmod($argv[2],0600);`
-		if _, err = runTimeout(time.Minute, "", "runuser", "-u", "itruroundcube", "--", phpCLI(v), "-r", code, webmailData+"/roundcube.sqlite", backup); err != nil {
+		if _, err = runAsUser(time.Minute, "itruroundcube", phpCLI(v), "-r", code, webmailData+"/roundcube.sqlite", backup); err != nil {
 			return
 		}
 		jobStage(j, "Резервная копия контактов и настроек: "+backup)
@@ -337,12 +362,21 @@ func setupRoundcube(host, cert string, j *Job) (err error) {
 	// Debian/Ubuntu packages omit upstream initdb.sh. Initialize only an empty
 	// database with the packaged SQL, then use their supported migration script.
 	initCode := `$db=new PDO('sqlite:'.$argv[1]);$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$n=(int)$db->query("SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")->fetchColumn();if($n===0){$sql=file_get_contents($argv[2]);if($sql===false){exit(1);}$db->beginTransaction();$db->exec($sql);$db->commit();}chmod($argv[1],0600);`
-	if _, err = runTimeout(time.Minute, "", "runuser", "-u", "itruroundcube", "--", phpCLI(v), "-r", initCode, webmailData+"/roundcube.sqlite", share+"/SQL/sqlite.initial.sql"); err != nil {
+	if _, err = runAsUser(time.Minute, "itruroundcube", phpCLI(v), "-r", initCode, webmailData+"/roundcube.sqlite", share+"/SQL/sqlite.initial.sql"); err != nil {
 		return
 	}
 	// В Roundcube 1.4 (Debian 11) скрипта нет: база создана из sqlite.initial.sql этой же версии
 	if fileExists(share+"/bin/updatedb.sh") || cfg.Dry {
-		if err = liveCommand(j, 3*time.Minute, "runuser", "-u", "itruroundcube", "--", phpCLI(v), share+"/bin/updatedb.sh", "--dir="+share+"/SQL", "--package=roundcube"); err != nil {
+		if isBSD() {
+			var out string
+			out, err = runAsUser(3*time.Minute, "itruroundcube", phpCLI(v), share+"/bin/updatedb.sh", "--dir="+share+"/SQL", "--package=roundcube")
+			if j != nil {
+				j.Write([]byte(out + "\n"))
+			}
+			if err != nil {
+				return
+			}
+		} else if err = liveCommand(j, 3*time.Minute, "runuser", "-u", "itruroundcube", "--", phpCLI(v), share+"/bin/updatedb.sh", "--dir="+share+"/SQL", "--package=roundcube"); err != nil {
 			return
 		}
 	} else {
@@ -357,11 +391,19 @@ func setupRoundcube(host, cert string, j *Job) (err error) {
 	if err = nginxTestReload(); err != nil {
 		return
 	}
-	if _, err = run("systemctl", "daemon-reload"); err != nil {
-		return
-	}
-	if _, err = run("systemctl", append([]string{"enable", "--now"}, timers...)...); err != nil {
-		return
+	if isBSD() {
+		// очистка Roundcube по расписанию: cron пользователя itruroundcube
+		tab := "# ITRUPANEL: очистка Roundcube\n0 3 * * * " + phpCLI(v) + " " + share + "/bin/gc.sh\n30 3 * * * " + phpCLI(v) + " " + share + "/bin/cleandb.sh\n"
+		if _, err = runInput(tab, "crontab", "-u", "itruroundcube", "-"); err != nil {
+			return
+		}
+	} else {
+		if _, err = run("systemctl", "daemon-reload"); err != nil {
+			return
+		}
+		if _, err = run("systemctl", append([]string{"enable", "--now"}, timers...)...); err != nil {
+			return
+		}
 	}
 	old := store.Mail
 	store.Mail = next

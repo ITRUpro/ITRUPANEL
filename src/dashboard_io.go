@@ -56,6 +56,13 @@ func dashboardIO() (map[string]ioCounters, map[string]ioCounters) {
 		t := uint64(time.Now().UnixMilli() % 86400000)
 		return map[string]ioCounters{"eth0": {t * 420, t * 180}, "eth1": {t * 45, t * 12}}, map[string]ioCounters{"vda": {t * 800, t * 360}}
 	}
+	if isBSD() {
+		nets := map[string]ioCounters{}
+		for name, c := range bsdNetCounters() {
+			nets[name] = ioCounters{c[0], c[1]}
+		}
+		return nets, map[string]ioCounters{}
+	}
 	netData, _ := os.ReadFile("/proc/net/dev")
 	diskData, _ := os.ReadFile("/proc/diskstats")
 	devices := map[string]bool{}

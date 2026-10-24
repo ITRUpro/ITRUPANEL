@@ -92,6 +92,9 @@ func rhelMajor() int {
 // spamRedisServer — программа и пользователь Redis для антиспама. В RHEL 10 Redis заменён
 // совместимым Valkey.
 func spamRedisServer() (bin, user string) {
+	if isBSD() {
+		return bsdPrefix + "/bin/redis-server", "redis"
+	}
 	if osInfo.Family == "rhel" && (rhelMajor() >= 10 || have("valkey-server")) && !have("redis-server") {
 		return "/usr/bin/valkey-server", "valkey"
 	}
@@ -99,6 +102,9 @@ func spamRedisServer() (bin, user string) {
 }
 
 func spamRedisPackage() string {
+	if isBSD() {
+		return "redis"
+	}
 	if osInfo.Family != "rhel" {
 		return "redis-server"
 	}
@@ -128,6 +134,9 @@ func ensureRspamdRepo(j *Job) error {
 // roundcubePaths — каталог программы и настроек Roundcube: пакет Debian roundcube-core
 // или EPEL roundcubemail.
 func roundcubePaths() (share, conf string) {
+	if isBSD() {
+		return bsdPrefix + "/www/roundcube", bsdPrefix + "/www/roundcube/config"
+	}
 	if osInfo.Family == "rhel" {
 		return "/usr/share/roundcubemail", "/etc/roundcubemail"
 	}
@@ -141,7 +150,7 @@ func roundcubeConfigPath() string {
 
 // systemCABundle — файл доверенных корневых сертификатов ОС.
 func systemCABundle() string {
-	for _, p := range []string{"/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"} {
+	for _, p := range []string{"/usr/local/share/certs/ca-root-nss.crt", "/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"} {
 		if fileExists(p) {
 			return p
 		}

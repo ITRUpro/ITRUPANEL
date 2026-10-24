@@ -93,7 +93,8 @@ type impExportDB struct {
 
 // impDirSize возвращает размер папки (du -sb) не дольше двух минут.
 func impDirSize(root string) int64 {
-	out, err := runTimeout(2*time.Minute, "", "du", "-sb", root)
+	flags, unit := duFlags()
+	out, err := runTimeout(2*time.Minute, "", "du", strings.Replace(flags, "x", "", 1), root)
 	if err != nil {
 		return 0
 	}
@@ -106,7 +107,7 @@ func impDirSize(root string) int64 {
 			n = n*10 + int64(c-'0')
 		}
 	}
-	return n
+	return n * unit
 }
 
 func registerImportExport() {

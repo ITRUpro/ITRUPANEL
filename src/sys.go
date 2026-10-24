@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -144,7 +145,7 @@ func randPass(n int) string {
 
 type OSInfo struct {
 	ID, Version, Pretty string
-	Family              string // debian | rhel
+	Family              string // debian | rhel | freebsd
 	WebUser             string // www-data | nginx
 	Systemd             bool
 }
@@ -154,6 +155,10 @@ var osInfo OSInfo
 func detectOS() {
 	osInfo = OSInfo{ID: "debian", Version: "12", Family: "debian", WebUser: "www-data", Systemd: true, Pretty: "Debian (demo)"}
 	if cfg.Dry {
+		return
+	}
+	if runtime.GOOS == "freebsd" {
+		detectFreeBSD()
 		return
 	}
 	f, err := os.Open("/etc/os-release")
@@ -179,6 +184,9 @@ func detectOS() {
 
 // service: start | stop | restart | reload | enable
 func service(action, name string) error {
+	if isBSD() {
+		return bsdService(action, name)
+	}
 	if name == "lsws" && action == "reload" {
 		action = "restart"
 	}
@@ -296,6 +304,9 @@ func serviceActive(name string) bool {
 	if cfg.Dry {
 		return true
 	}
+	if isBSD() {
+		return bsdServiceActive(bsdRCName(name))
+	}
 	if osInfo.Systemd {
 		if name == "lsws" {
 			name = olsServiceName()
@@ -315,6 +326,9 @@ func serviceActive(name string) bool {
 }
 
 func pkgInstall(pkgs ...string) error {
+	if isBSD() {
+		return bsdPkgInstall(pkgs...)
+	}
 	if osInfo.Family == "rhel" {
 		// Недоступный сторонний репозиторий (например, медленный LiteSpeed по HTTP) не должен
 		// срывать установку пакетов из других репозиториев

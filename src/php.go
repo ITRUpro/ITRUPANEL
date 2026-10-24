@@ -17,12 +17,23 @@ import (
 
 var phpAll = []string{"5.6", "7.0", "7.1", "7.2", "7.3", "7.4", "8.0", "8.1", "8.2", "8.3", "8.4", "8.5"}
 
+// phpAllVersions — версии PHP, доступные для установки: на FreeBSD их меньше (пакеты FreeBSD).
+func phpAllVersions() []string {
+	if isBSD() {
+		return bsdPHPVersions
+	}
+	return phpAll
+}
+
 // phpInstallMu — пакетный менеджер не терпит параллельных установок.
 var phpInstallMu sync.Mutex
 
 func vv(v string) string { return strings.ReplaceAll(v, ".", "") }
 
 func phpService(v string) string {
+	if isBSD() {
+		return "php_fpm"
+	}
 	if osInfo.Family == "rhel" {
 		return "php" + vv(v) + "-php-fpm"
 	}
@@ -30,6 +41,9 @@ func phpService(v string) string {
 }
 
 func phpPoolDir(v string) string {
+	if isBSD() {
+		return bsdPoolDir
+	}
 	if osInfo.Family == "rhel" {
 		return "/etc/opt/remi/php" + vv(v) + "/php-fpm.d"
 	}
@@ -37,6 +51,9 @@ func phpPoolDir(v string) string {
 }
 
 func phpIni(v string) string {
+	if isBSD() {
+		return bsdPHPIni
+	}
 	if osInfo.Family == "rhel" {
 		return "/etc/opt/remi/php" + vv(v) + "/php.ini"
 	}
@@ -44,6 +61,9 @@ func phpIni(v string) string {
 }
 
 func phpCLI(v string) string {
+	if isBSD() {
+		return bsdPHPCLI
+	}
 	if osInfo.Family == "rhel" {
 		return "/usr/bin/php" + vv(v)
 	}
@@ -51,6 +71,9 @@ func phpCLI(v string) string {
 }
 
 func phpFPMBin(v string) string {
+	if isBSD() {
+		return bsdFPMBin
+	}
 	if osInfo.Family == "rhel" {
 		return "/opt/remi/php" + vv(v) + "/root/usr/sbin/php-fpm"
 	}
@@ -71,6 +94,9 @@ func fpmBinary(svc string) string  { return phpFPMBin(svcVersion(svc)) }
 func fpmConfDir(svc string) string { return filepath.Dir(phpPoolDir(svcVersion(svc))) }
 
 func phpPackages(v string) []string {
+	if isBSD() {
+		return bsdPHPPackages(v)
+	}
 	ext := []string{"fpm", "cli", "mysql", "gd", "curl", "mbstring", "xml", "zip", "intl", "bcmath", "opcache", "sqlite3", "imagick", "soap"}
 	var out []string
 	for _, e := range ext {
@@ -112,7 +138,13 @@ func dedup(a []string) []string {
 
 func phpInstalled() []string {
 	var out []string
-	for _, v := range phpAll {
+	if isBSD() && !cfg.Dry {
+		if v := bsdInstalledPHP(); v != "" {
+			out = append(out, v)
+		}
+		return out
+	}
+	for _, v := range phpAllVersions() {
 		if cfg.Dry {
 			if v == "8.2" || v == "8.3" {
 				out = append(out, v)
@@ -304,6 +336,9 @@ func phpInstall(v string) error {
 	if phpIsInstalled(v) {
 		return nil
 	}
+	if isBSD() {
+		return bsdPHPInstall(v)
+	}
 	if err := phpRepoSetup(); err != nil {
 		return err
 	}
@@ -347,7 +382,7 @@ func registerPHP() {
 		}
 		mu.Unlock()
 		var rows []map[string]any
-		for _, v := range phpAll {
+		for _, v := range phpAllVersions() {
 			installed := false
 			for _, x := range inst {
 				installed = installed || x == v
@@ -368,7 +403,7 @@ func registerPHP() {
 			return nil, err
 		}
 		ok := false
-		for _, v := range phpAll {
+		for _, v := range phpAllVersions() {
 			ok = ok || v == in.Version
 		}
 		if !ok {
@@ -415,6 +450,9 @@ func registerPHP() {
 		}
 		mu.Unlock()
 		pk := phpPackages(in.Version)
+		if isBSD() {
+			return nil, bsdPHPRemove(in.Version)
+		}
 		if osInfo.Family == "rhel" {
 			_, err := run("dnf", append([]string{"remove", "-y"}, pk...)...)
 			return nil, err

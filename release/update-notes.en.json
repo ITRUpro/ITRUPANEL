@@ -1,4 +1,4 @@
 [
-  "File editor: a Save and close button; code highlighting for copies and drafts (config.php.new, index.html.bak and so on).",
+  "FreeBSD 14–15 support (beta): a separate installer and archive; websites on nginx, Apache and PHP-FPM, MariaDB, FTP, SSL, mail, DNS, antivirus, the pf firewall, FTP protection, backups and updating from the panel.",
   "Minor bug fixes."
 ]

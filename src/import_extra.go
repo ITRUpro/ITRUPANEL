@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -189,7 +188,10 @@ func impTransferDNS(j *Job, z impExportZone, oldIP string, mailMoved map[string]
 
 func impMailExtract(ctx context.Context, p *impPanel, address string) (int64, error) {
 	home := mailHome(address)
-	cmd := exec.CommandContext(ctx, "runuser", "-u", "itrumail", "--", "tar", "-xpf", "-", "-C", home)
+	cmd, err := asUserCommand(ctx, "itrumail", "tar", "-xpf", "-", "-C", home)
+	if err != nil {
+		return 0, err
+	}
 	in, err := cmd.StdinPipe()
 	if err != nil {
 		return 0, err

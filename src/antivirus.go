@@ -289,6 +289,10 @@ func avScanTreeStop(root string, progress func(int), stop func() bool) (int, []A
 func avClamInstalled() bool { return !cfg.Dry && have("clamscan") }
 
 func avMemTotal() int64 {
+	if isBSD() {
+		t, _ := bsdMemInfo()
+		return int64(t)
+	}
 	data, _ := os.ReadFile("/proc/meminfo")
 	for _, line := range strings.Split(string(data), "\n") {
 		if f := strings.Fields(line); len(f) >= 2 && f[0] == "MemTotal:" {
@@ -300,6 +304,9 @@ func avMemTotal() int64 {
 }
 
 func avClamDBDir() string {
+	if isBSD() {
+		return "/var/db/clamav"
+	}
 	if osInfo.Family == "rhel" {
 		return "/var/lib/clamav"
 	}
@@ -706,6 +713,9 @@ func avForgetQuarantine(id string) error {
 // ---------- установка и обновление ClamAV ----------
 
 func avFreshclamConf() string {
+	if isBSD() {
+		return bsdPrefix + "/etc/freshclam.conf"
+	}
 	if osInfo.Family == "rhel" {
 		return "/etc/freshclam.conf"
 	}
@@ -786,7 +796,11 @@ func avFreshclam(j *Job) error {
 	// Базы обновляет панель раз в сутки (с переключением на зеркала). Служба clamav-freshclam
 	// проверяет их 24 раза в сутки и при блокировке официального сервера только продлевает паузу,
 	// поэтому она отключается.
-	run("systemctl", "disable", "--now", "clamav-freshclam")
+	if isBSD() {
+		run("service", "clamav_freshclam", "onestop")
+	} else {
+		run("systemctl", "disable", "--now", "clamav-freshclam")
+	}
 	jobStage(j, "Загрузка баз ClamAV (около 120 МБ)")
 	log, err := avRunFreshclam(j, mirrors)
 	// В режиме паузы после 403 («cool-down») freshclam ничего не скачивает, но завершается
@@ -818,7 +832,15 @@ func avFreshclam(j *Job) error {
 }
 
 func avInstall(j *Job) (any, error) {
-	if osInfo.Family == "rhel" {
+	if isBSD() {
+		jobStage(j, "Установка ClamAV")
+		if err := bsdPkgCheck("clamav"); err != nil {
+			return nil, err
+		}
+		if err := liveCommand(j, 30*time.Minute, "pkg", "install", "-y", "clamav"); err != nil {
+			return nil, err
+		}
+	} else if osInfo.Family == "rhel" {
 		if err := ensureEPEL(j); err != nil {
 			return nil, err
 		}

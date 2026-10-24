@@ -51,7 +51,7 @@ function dashboardServiceState(state) {
   return ({running: ["Running", 'ok'], stopped: ["Stopped", 'err'], failed: ["Error", 'err'], missing: ["Not installed", 'off'], masked: ["Masked", 'err'], changing: ["Transitioning", 'warn'], unknown: ["No data", 'warn']})[state] || ["No data", 'warn'];
 }
 function dashboardServiceTitle(s) {
-  const titles = {'nginx':"nginx web server",'mariadb':"MariaDB database",'pure-ftpd':"FTP server",'cron':"cron scheduler",'crond':"cron scheduler",'named':"BIND DNS server",'rspamd':"Anti-spam · Rspamd"};
+  const titles = {'nginx':"nginx web server",'mariadb':"MariaDB database",'pure-ftpd':"FTP server",'cron':"cron scheduler",'crond':"cron scheduler",'named':(App.me && App.me.family === 'freebsd' ? "NSD DNS server" : "BIND DNS server"),'rspamd':"Anti-spam · Rspamd"};
   return titles[s.name] || s.title;
 }
 function dashboardNeedsAttention(service) { return !['running', 'missing'].includes(service.state); }
@@ -253,7 +253,7 @@ async function siteForm(edit) {
       { name: 'user', label: "Owner (system user)", type: 'select', options: users, value: '', show: () => isNew },
       { name: 'kind', label: "What kind of site?", type: 'select', value: 'php', show: () => isNew, options: (meta.kinds || []).map((k) => [k.id, (window.PanelLanguage?.language === 'en' && k.name_en) || k.name]) },
       { type: 'html', show: () => isNew, html: (v) => { const k = (meta.kinds || []).find((x) => x.id === v.kind); return k ? `<p class="hint">${h((window.PanelLanguage?.language === 'en' && k.desc_en) || k.desc)}</p>` : ''; } },
-      { name: 'mode', label: "Operating mode", type: 'seg', value: s.mode === 'php' && ['apache', 'openlitespeed'].includes(s.backend) ? s.backend : (s.mode || 'php'), options: [['php', 'nginx + PHP-FPM'], ['apache', 'nginx + Apache'], ['openlitespeed', 'nginx + OpenLiteSpeed'], ['static', "Static only"], ['proxy', "Proxy"]],
+      { name: 'mode', label: "Operating mode", type: 'seg', value: s.mode === 'php' && ['apache', 'openlitespeed'].includes(s.backend) ? s.backend : (s.mode || 'php'), options: [['php', 'nginx + PHP-FPM'], ['apache', 'nginx + Apache'], ['openlitespeed', 'nginx + OpenLiteSpeed'], ['static', "Static only"], ['proxy', "Proxy"]].filter((o) => !(App.me && App.me.family === 'freebsd' && ['openlitespeed'].includes(o[0]))),
         hint: "Apache supports .htaccess; OpenLiteSpeed supports Rewrite rules in .htaccess. All modes use PHP-FPM. OpenLiteSpeed is installed when first selected. After editing .htaccess, restart OpenLiteSpeed in Server information." },
       { name: 'php', label: "PHP version", type: 'select', options: php, value: s.php || meta.default_php || '8.3', show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode), hint: "If this version is not installed, the panel installs it on save (2–5 minutes). <a href=\"#/php\">All PHP versions</a>" },
       { name: 'php_profile', label: "PHP load", type: 'select', value: s.php_profile || '', show: (v) => ['php', 'apache', 'openlitespeed'].includes(v.mode),
@@ -570,8 +570,8 @@ page('dns', {
     const d = await api('dns.list');
     if (!view.isConnected) return;
     if (params.zone) return zonePage(view, params.zone);
-    head(view, "DNS management", { sub: d.installed ? (d.active ? '' : "<span class=\"tag warn\">BIND DNS server is stopped</span>") : "<span class=\"tag warn\">BIND DNS server is not installed</span>", actions: [
-      d.installed ? { t: "Create zone", i: 'plus', primary: true, fn: () => zoneForm(d) } : { t: "Install BIND", i: 'download', primary: true, fn: async () => { toast("Installing BIND…"); try { await api('dns.install'); toast("Installed", 'ok'); route(); } catch (e) { fail(e); } } },
+    head(view, "DNS management", { sub: d.installed ? (d.active ? '' : '<span class="tag warn">' + (App.me && App.me.family === 'freebsd' ? "NSD DNS server is stopped" : "BIND DNS server is stopped") + '</span>') : '<span class="tag warn">' + (App.me && App.me.family === 'freebsd' ? "NSD DNS server is not installed" : "BIND DNS server is not installed") + '</span>', actions: [
+      d.installed ? { t: "Create zone", i: 'plus', primary: true, fn: () => zoneForm(d) } : { t: (App.me && App.me.family === 'freebsd' ? "Install NSD" : "Install BIND"), i: 'download', primary: true, fn: async () => { toast(App.me && App.me.family === 'freebsd' ? "Installing NSD…" : "Installing BIND…"); try { await api('dns.install'); toast("Installed", 'ok'); route(); } catch (e) { fail(e); } } },
     ] });
     const p = panel(view);
     table(p, {

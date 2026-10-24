@@ -37,6 +37,9 @@ type DNSZone struct {
 var dnsTypes = []string{"A", "AAAA", "CNAME", "MX", "TXT", "NS", "SRV", "CAA"}
 
 func dnsDir() string {
+	if isBSD() {
+		return bsdNSDDir + "/itrupanel"
+	}
 	if osInfo.Family == "rhel" {
 		return "/var/named/itrupanel"
 	}
@@ -44,13 +47,21 @@ func dnsDir() string {
 }
 
 func dnsZonesConf() string {
+	if isBSD() {
+		return bsdNSDDir + "/itrupanel-zones.conf"
+	}
 	if osInfo.Family == "rhel" {
 		return "/etc/named/itrupanel-zones.conf"
 	}
 	return "/etc/bind/itrupanel-zones.conf"
 }
 
-func dnsInstalled() bool { return fileExists("/usr/sbin/named") }
+func dnsInstalled() bool {
+	if isBSD() {
+		return fileExists(bsdNSDBin)
+	}
+	return fileExists("/usr/sbin/named")
+}
 
 func findZone(name string) *DNSZone {
 	for _, z := range store.DNSZones {
@@ -135,6 +146,10 @@ func renderZone(z *DNSZone) string {
 	recs := append([]*DNSRecord{}, z.Records...)
 	order := map[string]int{"NS": 0, "A": 1, "AAAA": 2, "CNAME": 3, "MX": 4, "TXT": 5, "SRV": 6, "CAA": 7}
 	sort.SliceStable(recs, func(i, j int) bool { return order[recs[i].Type] < order[recs[j].Type] })
+	var rrsetTTL map[string]int
+	if isBSD() {
+		rrsetTTL = nsdRRsetTTL(z, recs)
+	}
 	for _, r := range recs {
 		name := r.Name
 		if name == "" {
@@ -143,6 +158,9 @@ func renderZone(z *DNSZone) string {
 		ttl := ""
 		if r.TTL > 0 {
 			ttl = strconv.Itoa(r.TTL)
+		}
+		if t, ok := rrsetTTL[name+"/"+r.Type]; ok {
+			ttl = strconv.Itoa(t)
 		}
 		val := r.Value
 		switch r.Type {
@@ -176,7 +194,7 @@ func applyZone(z *DNSZone) error {
 	if err := writeFile(path, []byte(renderZone(z)), 0644); err != nil {
 		return err
 	}
-	if out, err := run("named-checkzone", z.Name, P(path)); err != nil {
+	if out, err := dnsCheckZone(z.Name, P(path)); err != nil {
 		if prev != "" {
 			writeFile(path, []byte(prev), 0644)
 		} else {
@@ -184,7 +202,9 @@ func applyZone(z *DNSZone) error {
 		}
 		return errf("Ошибка в зоне: %s", lastLines(out, 3))
 	}
-	if osInfo.Family == "rhel" {
+	if isBSD() {
+		run("chown", "root:nsd", path)
+	} else if osInfo.Family == "rhel" {
 		run("chown", "root:named", path)
 		run("restorecon", path)
 	} else {
@@ -195,17 +215,28 @@ func applyZone(z *DNSZone) error {
 
 func writeZonesConf() error {
 	var b strings.Builder
-	b.WriteString("// ITRUPANEL: список зон. Файл перезаписывается панелью.\n")
+	if isBSD() {
+		b.WriteString("# ITRUPANEL: список зон. Файл перезаписывается панелью.\n") // комментарии nsd.conf начинаются с #
+	} else {
+		b.WriteString("// ITRUPANEL: список зон. Файл перезаписывается панелью.\n")
+	}
 	names := []string{}
 	for _, z := range store.DNSZones {
 		names = append(names, z.Name)
 	}
 	sort.Strings(names)
 	for _, n := range names {
+		if isBSD() {
+			fmt.Fprintf(&b, "zone:\n    name: \"%s\"\n    zonefile: \"%s/%s.db\"\n", n, dnsDir(), n)
+			continue
+		}
 		fmt.Fprintf(&b, "zone \"%s\" {\n    type master;\n    file \"%s/%s.db\";\n    allow-transfer { none; };\n};\n", n, dnsDir(), n)
 	}
 	if err := writeFile(dnsZonesConf(), []byte(b.String()), 0644); err != nil {
 		return err
+	}
+	if isBSD() {
+		return nsdReload()
 	}
 	if out, err := run("named-checkconf"); err != nil {
 		return errf("named-checkconf: %s", lastLines(out, 3))
@@ -650,6 +681,9 @@ func rhelNamedConf(c string) string {
 }
 
 func setupBind() error {
+	if isBSD() {
+		return bsdSetupBind()
+	}
 	if !dnsInstalled() {
 		pk := []string{"bind9", "bind9-utils"}
 		if osInfo.Family == "rhel" {

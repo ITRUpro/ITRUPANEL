@@ -26,7 +26,37 @@ import (
 	"time"
 )
 
-const releaseEndpoint = "https://itrupanel.com/panel/latest.json"
+const releaseEndpointLinux = "https://itrupanel.com/panel/latest.json"
+const releaseEndpointFreeBSD = "https://itrupanel.com/panel/latest-freebsd.json"
+
+// Для FreeBSD выпуск отдельный: свой подписанный latest-freebsd.json и свой архив itrupanel-freebsd-<версия>.zip.
+func releaseEndpoint() string {
+	if isBSD() {
+		return releaseEndpointFreeBSD
+	}
+	return releaseEndpointLinux
+}
+func releaseArchiveURL(version string) string {
+	if isBSD() {
+		return "https://itrupanel.com/panel/itrupanel-freebsd-" + version + ".zip"
+	}
+	return "https://itrupanel.com/panel/itrupanel-full-" + version + ".zip"
+}
+
+// releaseBinaryName — имя программы в архиве: itrupanel-linux-<arch> или itrupanel-freebsd-<arch>.
+func releaseBinaryName(arch string) string {
+	if isBSD() {
+		return "itrupanel-freebsd-" + arch
+	}
+	return "itrupanel-linux-" + arch
+}
+func releaseScriptName() string {
+	if isBSD() {
+		return "update-freebsd.sh"
+	}
+	return "update.sh"
+}
+
 const releasePublicKey = "22b0819f8689c898d6de2a70441d26bc01a6ddbf0d48c6e57afa4b5a127baf75"
 const maxReleaseSize int64 = 128 << 20
 
@@ -111,7 +141,7 @@ func verifyPanelRelease(data []byte, key ed25519.PublicKey) (*PanelRelease, erro
 	if r.Schema != 1 || !releaseVersionRE.MatchString(r.Version) || !releaseVersionRE.MatchString(r.MinimumVersion) {
 		return nil, errf("Неподдерживаемое описание выпуска")
 	}
-	if r.URL != "https://itrupanel.com/panel/itrupanel-full-"+r.Version+".zip" {
+	if r.URL != releaseArchiveURL(r.Version) {
 		return nil, errf("Неожиданный адрес архива")
 	}
 	digest, e := hex.DecodeString(r.SHA256)
@@ -144,7 +174,7 @@ func releaseHTTPClient(timeout time.Duration) *http.Client {
 	}}
 }
 func fetchPanelRelease(ctx context.Context) (*PanelRelease, error) {
-	req, e := http.NewRequestWithContext(ctx, "GET", releaseEndpoint, nil)
+	req, e := http.NewRequestWithContext(ctx, "GET", releaseEndpoint(), nil)
 	if e != nil {
 		return nil, e
 	}
@@ -251,6 +281,12 @@ func updateSupportReason() string {
 	if cfg.Dry {
 		return "Демонстрация: установка обновлений отключена"
 	}
+	if isBSD() {
+		if cfg.Home != "/usr/local/itrupanel" || os.Geteuid() != 0 {
+			return "Нужна стандартная установка /usr/local/itrupanel, запущенная от root"
+		}
+		return ""
+	}
 	if runtime.GOOS != "linux" || !osInfo.Systemd {
 		return "Для обновления из панели нужен Linux с systemd"
 	}
@@ -268,8 +304,14 @@ func reconcilePanelUpdate() *PanelUpdateRun {
 		return &PanelUpdateRun{State: "error", Error: "Не удалось прочитать журнал обновления: " + e.Error()}
 	}
 	if runningPanelUpdate(r) && time.Since(r.Updated) > 90*time.Second && regexp.MustCompile(`^itrupanel-online-update-[a-f0-9]{24}$`).MatchString(r.Unit) {
-		out, e := runTimeout(5*time.Second, "", "systemctl", "show", r.Unit, "--property=ActiveState", "--property=LoadState")
-		if (e == nil && (strings.Contains(out, "ActiveState=inactive") || strings.Contains(out, "ActiveState=failed"))) || strings.Contains(out, "LoadState=not-found") {
+		stopped := false
+		if isBSD() {
+			stopped = !bsdUpdateWorkerAlive(r.ID)
+		} else {
+			out, e := runTimeout(5*time.Second, "", "systemctl", "show", r.Unit, "--property=ActiveState", "--property=LoadState")
+			stopped = (e == nil && (strings.Contains(out, "ActiveState=inactive") || strings.Contains(out, "ActiveState=failed"))) || strings.Contains(out, "LoadState=not-found")
+		}
+		if stopped {
 			fresh, readErr := readPanelUpdate()
 			if readErr != nil || fresh == nil || fresh.ID != r.ID || !runningPanelUpdate(fresh) || !fresh.Updated.Equal(r.Updated) {
 				return fresh
@@ -384,7 +426,11 @@ func startPanelUpdateMode(version, sha string, auto bool) (*PanelUpdateRun, erro
 	if e = writeUpdateJSON(updateStatusPath(), job); e != nil {
 		return nil, e
 	}
-	_, e = runTimeout(15*time.Second, "", "systemd-run", "--unit="+job.Unit, "--description=ITRUPANEL update to "+r.Version, "--property=Type=exec", "--property=UMask=0077", filepath.Join(dir, "worker"), "update-worker", id)
+	if isBSD() {
+		e = bsdStartUpdateWorker(dir, id)
+	} else {
+		_, e = runTimeout(15*time.Second, "", "systemd-run", "--unit="+job.Unit, "--description=ITRUPANEL update to "+r.Version, "--property=Type=exec", "--property=UMask=0077", filepath.Join(dir, "worker"), "update-worker", id)
+	}
 	if e != nil {
 		job.State = "error"
 		job.Error = e.Error()
@@ -534,15 +580,15 @@ func unpackPanelRelease(archive, dir, arch string) error {
 			return ce
 		}
 	}
-	for _, name := range []string{"itrupanel/update.sh", "itrupanel/bin/itrupanel-linux-" + arch} {
+	for _, name := range []string{"itrupanel/" + releaseScriptName(), "itrupanel/bin/" + releaseBinaryName(arch)} {
 		if !seen[name] {
 			return errf("В архиве отсутствует %s", name)
 		}
 	}
-	return os.Chmod(filepath.Join(dir, "itrupanel", "bin", "itrupanel-linux-"+arch), 0700)
+	return os.Chmod(filepath.Join(dir, "itrupanel", "bin", releaseBinaryName(arch)), 0700)
 }
 func runPanelUpdateWorker(id string) (err error) {
-	if os.Geteuid() != 0 || runtime.GOOS != "linux" || !regexp.MustCompile(`^[a-f0-9]{24}$`).MatchString(id) {
+	if os.Geteuid() != 0 || (runtime.GOOS != "linux" && runtime.GOOS != "freebsd") || !regexp.MustCompile(`^[a-f0-9]{24}$`).MatchString(id) {
 		return errf("Неверный запуск службы обновления")
 	}
 	dir := filepath.Join(cfg.Home, "var", "panel-updates", id)
@@ -559,7 +605,11 @@ func runPanelUpdateWorker(id string) (err error) {
 	if e != nil || status == nil || status.ID != id {
 		return errf("Задание обновления не найдено")
 	}
-	lock, e := os.OpenFile("/run/lock/itrupanel-online-update.lock", os.O_CREATE|os.O_RDWR, 0600)
+	lockPath := "/run/lock/itrupanel-online-update.lock"
+	if isBSD() {
+		lockPath = filepath.Join(cfg.Home, "var", "online-update.lock")
+	}
+	lock, e := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0600)
 	if e != nil {
 		return e
 	}
@@ -627,7 +677,7 @@ func runPanelUpdateWorker(id string) (err error) {
 	if e = unpackPanelRelease(filepath.Join(work, "release.zip"), work, runtime.GOARCH); e != nil {
 		return e
 	}
-	bin := filepath.Join(work, "itrupanel", "bin", "itrupanel-linux-"+runtime.GOARCH)
+	bin := filepath.Join(work, "itrupanel", "bin", releaseBinaryName(runtime.GOARCH))
 	versionCtx, versionCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer versionCancel()
 	out, e := exec.CommandContext(versionCtx, bin, "version").CombinedOutput()
@@ -645,6 +695,10 @@ func runPanelUpdateWorker(id string) (err error) {
 		return e
 	}
 	command := exec.Command("/bin/bash", filepath.Join(work, "itrupanel", "update.sh"))
+	if isBSD() {
+		command = exec.Command("/bin/sh", filepath.Join(work, "itrupanel", releaseScriptName()))
+		command.Env = append(os.Environ(), "ITRUPANEL_UPDATE_DETACHED=1")
+	}
 	command.Stdout = w
 	command.Stderr = w
 	if e = command.Run(); e != nil {

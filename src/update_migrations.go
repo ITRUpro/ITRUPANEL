@@ -77,7 +77,7 @@ func panelMigrations() []updateMigration {
 				return nil, nil
 			}
 			paths := []string{P(cfg.Home + "/www/phpmyadmin/config.inc.php"), P(vhostDir + "/000-itrupanel-pma.conf")}
-			for _, v := range phpAll {
+			for _, v := range phpAllVersions() {
 				paths = append(paths, P(phpPoolDir(v)+"/itru_pma.conf"))
 			}
 			return paths, nil

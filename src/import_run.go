@@ -155,7 +155,10 @@ func impTarCmd(root string) string {
 // impCopyTree копирует папку со старого сервера в папку сайта от имени его владельца: так
 // содержимое архива не может записать файлы за пределами сайта.
 func impCopyTree(ctx context.Context, r impRunner, remoteRoot, localRoot, user string, tick func(int64)) (int64, error) {
-	cmd := exec.CommandContext(ctx, "runuser", "-u", user, "--", "tar", "-xpf", "-", "-C", localRoot)
+	cmd, err := asUserCommand(ctx, user, "tar", "-xpf", "-", "-C", localRoot)
+	if err != nil {
+		return 0, err
+	}
 	in, err := cmd.StdinPipe()
 	if err != nil {
 		return 0, err

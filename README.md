@@ -97,6 +97,9 @@ Heuristics can produce false positives, so look at a finding before deleting a s
 | Debian | 11, 12, 13 |
 | AlmaLinux, Rocky Linux | 8, 9, 10 |
 | CentOS Stream, RHEL | 9–10, 8–10 |
+| FreeBSD (beta, separate archive) | 14, 15 |
+
+FreeBSD (beta) has its own archive, installer and update channel; what works and what differs from Linux is described in [docs/FreeBSD.md](docs/FreeBSD.md).
 
 amd64 and arm64 · root access and systemd are required · install on a clean server.
 
@@ -122,6 +125,14 @@ PHP_VERSION=none bash install.sh                           # do not install PHP
 The login and password can be changed later in the panel (key icon) or with `itrupanel passwd <password> [login]`.
 
 Ports: panel TCP 3333 · websites 80/443 · FTP 21 and passive 30000–30100 · DNS 53 (if used) · mail 25/587/993 (if mail is enabled).
+
+**FreeBSD 14/15 (beta)** has its own installer and archive. Run as root on a clean FreeBSD server:
+
+```sh
+fetch -o install.sh https://itrupanel.com/panel/install-itrupanel-freebsd.sh && sh install.sh
+```
+
+What works and what differs from Linux: [docs/FreeBSD.md](docs/FreeBSD.md).
 
 ## Upgrading
 

@@ -18,7 +18,9 @@ import (
 )
 
 const fwTable = "itrupanel_fw"
-const fwConfig = "/etc/itrupanel/firewall.nft"
+
+var fwConfig = "/etc/itrupanel/firewall.nft"
+
 const fwUnit = "/etc/systemd/system/itrupanel-firewall.service"
 const fwUnitName = "itrupanel-firewall.service"
 
@@ -170,6 +172,9 @@ func fwMatch(r FirewallRule, source string) string {
 	return strings.Join(words, " ")
 }
 func fwScript(state FirewallState, protected []int) (string, error) {
+	if isBSD() {
+		return fwScriptPF(state, protected)
+	}
 	var b strings.Builder
 	// A single nft transaction replaces only the dedicated table, never the ruleset.
 	fmt.Fprintf(&b, "add table inet %s\ndelete table inet %s\n", fwTable, fwTable)
@@ -314,7 +319,7 @@ func fwProtectedPorts() ([]int, error) {
 }
 func fwMarker() string { return filepath.Join(cfg.Home, "etc", "firewall-owned") }
 func fwExists() (bool, error) {
-	if cfg.Dry {
+	if cfg.Dry || isBSD() {
 		return store.Firewall.Enabled, nil
 	}
 	out, e := runTimeout(10*time.Second, "", "nft", "-j", "list", "tables")
@@ -348,7 +353,7 @@ func fwSnapshot() (string, error) {
 	if _, e := os.Stat(fwMarker()); e != nil {
 		return "", errf("Таблица %s уже существует и не принадлежит панели", fwTable)
 	}
-	if cfg.Dry {
+	if cfg.Dry || isBSD() {
 		p, _ := fwProtectedPorts()
 		return fwScript(store.Firewall, p)
 	}
@@ -359,6 +364,9 @@ func fwSnapshot() (string, error) {
 	return remove + out + "\n", nil
 }
 func fwNft(script string, check bool) error {
+	if isBSD() {
+		return fwPFApply(script, check)
+	}
 	args := []string{"-f", "-"}
 	if check {
 		args = append([]string{"-c"}, args...)
@@ -430,7 +438,7 @@ func fwApplyLocked(next FirewallState) error {
 func fwInstall(j *Job) error {
 	fwMu.Lock()
 	defer fwMu.Unlock()
-	if !cfg.Dry && !osInfo.Systemd {
+	if !cfg.Dry && !osInfo.Systemd && !isBSD() {
 		return errf("Модуль требует Linux с systemd")
 	}
 	mu.Lock()
@@ -438,6 +446,9 @@ func fwInstall(j *Job) error {
 	mu.Unlock()
 	if ready {
 		return nil
+	}
+	if isBSD() {
+		return fwInstallBSD(j)
 	}
 	if !have("nft") {
 		jobStage(j, "Установка nftables")

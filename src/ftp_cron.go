@@ -268,7 +268,7 @@ func registerCron() {
 		if job.ID == "" {
 			return nil, errf("Задание не найдено")
 		}
-		out, err := runTimeout(2*time.Minute, "", "runuser", "-u", job.User, "--", "bash", "-c", job.Command)
+		out, err := runAsUser(2*time.Minute, job.User, "bash", "-c", job.Command)
 		if len(out) > 20000 {
 			out = out[len(out)-20000:]
 		}
