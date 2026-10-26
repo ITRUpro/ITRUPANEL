@@ -1,5 +1,5 @@
 [
-  "A new Web servers section: versions of nginx, Apache, OpenLiteSpeed and PHP, update checks (daily and on a button) with a notice, and installing updates with a button; the PHP section also gets an “available” mark and an Update button.",
-  "nginx: choose the package source — system, nginx.org stable or nginx.org mainline (stable or mainline on FreeBSD); Apache on Debian and Ubuntu: system or the Ondřej Surý repository. The settings are saved before a change and everything is restored on an error.",
-  "Minor bug fixes."
+  "Antivirus: Maldet (Linux Malware Detect) replaces AI-Bolit (the project is closed) as the third engine next to the built-in scan and ClamAV. The Install Maldet button downloads a release from GitHub itself and turns off its file monitoring and cron jobs; the scan runs one after another with the other antiviruses, and findings are cleaned up and quarantined as usual.",
+  "Maldet signatures are updated automatically every 4 hours and with the Update signatures button in the Maldet block; the Update Maldet button installs a new release of the program. Linux only (the built-in scan and ClamAV are available on FreeBSD).",
+  "The AI-Bolit scanner downloaded earlier is removed during the update."
 ]

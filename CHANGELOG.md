@@ -2,6 +2,13 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.26
+
+- **Antivirus: Maldet replaces AI-Bolit** (the AI-Bolit project is closed). [Maldet](https://github.com/rfxn/linux-malware-detect) (Linux Malware Detect) is the optional third engine next to the built-in scan and ClamAV: the **Install Maldet** button downloads the latest release from GitHub (from the developer's site if GitHub is unavailable) over https, runs its installer, installs `perl` if it is missing, and turns off Maldet's own file monitoring service, cron jobs, e-mail alerts and quarantine; the panel runs the scan itself, one after another with the other antiviruses, never lets Maldet change files, and keeps quarantine and cleanup to itself
+- **Maldet signatures** (about 45 thousand entries) are updated automatically every 4 hours and with the **Update signatures** button; **Update Maldet** installs a new release of the program; **Remove** deletes it with all its files. Linux only: on FreeBSD the built-in scan and ClamAV remain
+- an AI-Bolit scanner downloaded earlier is removed during the update
+- tested with the real panel on Debian 12 and 13, Ubuntu 24.04, Rocky Linux 9 and AlmaLinux 10 (SELinux enforcing on Rocky and Alma): install, hardening, signature update, finding a web shell, update of the program, removal, and the update of a running 0.2.25 panel to 0.2.26
+
 ## 0.2.25
 
 - **Web servers section** (Linux and FreeBSD): versions of nginx, Apache, OpenLiteSpeed and every installed PHP version; the panel checks the connected package sources once a night and on the **Check for updates** button, reports a new version with a notice and shows an *available* mark (also in the PHP section); an update is installed with a button after the settings are saved to `/var/backups/itrupanel/components`, the configuration is checked, the service is restarted and tested, and everything is restored if anything fails

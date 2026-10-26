@@ -454,6 +454,7 @@ func schedulerLoop() {
 			avAutoScan(now)
 			avAutoUpdateDB(now)
 			avAutoUpdateRules(now)
+			maldetAutoUpdate(now)
 			tplLibAutoUpdate(now)
 			compAutoCheck(now)
 		}

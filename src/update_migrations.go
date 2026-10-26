@@ -432,6 +432,10 @@ func panelMigrations() []updateMigration {
 			}
 			return nginxTestReload()
 		}},
+		// AI-Bolit больше не поддерживается (проект закрыт, вместо него — Maldet): убираем скачанный сканер.
+		{"026-remove-aibolit", func() ([]string, error) { return nil, nil }, func() error {
+			return os.RemoveAll(P("/var/lib/itrupanel/aibolit"))
+		}},
 		// Журналы сайтов на RHEL с SELinux имели тип веб-контента: logrotate не мог их прочитать.
 		{"025-selinux-site-logs", func() ([]string, error) { return nil, nil }, func() error {
 			selinuxLogsLabel()
