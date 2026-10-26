@@ -234,6 +234,7 @@ const NAV = [
   ['notices', "Notifications", 'bell'],
   ['disk', "Disk usage", 'disk'],
   ['php', 'PHP', 'php'],
+  ['webservers', "Web servers", 'server'],
   ['jobs', "Tasks", 'clock'],
   ['firewall', "Firewall", 'shield'],
   ['security', "Site protection", 'shield'],
@@ -245,7 +246,7 @@ const NAV = [
 ];
 const NAV_GROUPS = [
   {key:'hosting',title:"Hosting",pages:['sites','ssl','db','mail','dns','files','ftp','backups','import']},
-  {key:'server',title:"Server",pages:['info','php','dbservers','docker','cron','ips','shell']},
+  {key:'server',title:"Server",pages:['info','php','webservers','dbservers','docker','cron','ips','shell']},
   {key:'security',title:"Security",pages:['security','antivirus','authguard','firewall']},
   {key:'diagnostics',title:"Diagnostics",pages:['oplog','visits','wwwlogs','traffic','resources','disk','jobs']}
 ];

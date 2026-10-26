@@ -1,5 +1,5 @@
 [
-  "FreeBSD: updating the panel is no longer interrupted or rolled back when PHP-FPM does not start (packages built for a newer system release): the PHP service is left alone during the update.",
-  "Linux: unchanged.",
+  "A new Web servers section: versions of nginx, Apache, OpenLiteSpeed and PHP, update checks (daily and on a button) with a notice, and installing updates with a button; the PHP section also gets an “available” mark and an Update button.",
+  "nginx: choose the package source — system, nginx.org stable or nginx.org mainline (stable or mainline on FreeBSD); Apache on Debian and Ubuntu: system or the Ondřej Surý repository. The settings are saved before a change and everything is restored on an error.",
   "Minor bug fixes."
 ]

@@ -26,6 +26,10 @@ Keep the system up to date: FreeBSD packages are built for the current release, 
 
 Websites (nginx + PHP-FPM, nginx + Apache, static, proxy), site templates, page cache, PHP profiles, site protection; MariaDB and phpMyAdmin; SSL (self-signed, Let's Encrypt through certbot); FTP (pure-ftpd); mail (Postfix, Dovecot, OpenDKIM, Rspamd with its own Redis, Roundcube); DNS (NSD); backups and restore; cron; file manager; PHP settings and extensions from FreeBSD packages; antivirus (built-in, ClamAV); firewall on pf; login protection and FTP protection (fail2ban + pf); monitoring, logs, jobs, shell client; updating from the panel.
 
+## Web servers section
+
+The **Web servers** section shows the versions of nginx, Apache and the installed PHP, checks for updates once a night and on a button, and installs them with one click. On FreeBSD nginx can be switched between **stable** (the `nginx` package) and **mainline** (`nginx-devel`); Apache and PHP are updated from the FreeBSD packages (OpenLiteSpeed does not exist for FreeBSD).
+
 ## What is different or missing
 
 | Feature | On FreeBSD |

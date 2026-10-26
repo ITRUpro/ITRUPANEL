@@ -1724,6 +1724,8 @@ page('php', {
     const p = panel(view);
     const load = async () => {
       const rows = await api('php.list');
+      const comps = await api('components.list').then((d) => d.rows).catch(() => []);
+      const cmap = Object.fromEntries(comps.filter((c) => c.kind === 'php').map((c) => [c.id.slice(4), c]));
       table(p, {
         rows,
         columns: [
@@ -1731,8 +1733,10 @@ page('php', {
           { t: 'Состояние', r: (r) => r.job === 'running' ? '<span class="tag acc"><span class="spin" style="width:12px;height:12px;border-width:2px"></span> устанавливается</span>' : r.job === 'error' ? '<span class="tag err">ошибка установки</span>' : r.installed ? (r.active ? '<span class="tag ok">работает</span>' : '<span class="tag warn">остановлен</span>') : '<span class="tag">не установлен</span>' },
           { t: 'Релиз', r: (r) => r.installed && r.release ? h(r.release) : '<span class="muted">—</span>', cls: 'nowrap' },
           { t: 'Сайтов', r: (r) => r.sites || '—' },
+          { t: 'Обновление', r: (r) => r.installed && cmap[r.version] && cmap[r.version].new ? `<span class="tag acc">доступна ${h(cmap[r.version].new)}</span>` : '<span class="muted">—</span>' },
         ],
         actions: (r) => r.job === 'running' ? [] : r.installed ? [
+          cmap[r.version] && cmap[r.version].new && { i: 'download', t: 'Обновить PHP до ' + cmap[r.version].new, label: 'Обновить', fn: () => wsUpdate(cmap[r.version], load) },
           { i: 'edit', t: 'Настройки php.ini', label: 'Настройки', fn: () => phpIni(r.version) },
           { i: 'archive', t: 'Модули', label: 'Модули', fn: () => phpExt(r.version) },
           !r.default && { i: 'check', t: 'Сделать версией по умолчанию', fn: async () => { await api('php.default', { version: r.version }); load(); } },

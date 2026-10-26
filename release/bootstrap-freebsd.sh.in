@@ -4,7 +4,7 @@
 set -eu
 PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
-RELEASE=0.2.24
+RELEASE=0.2.25
 ARCHIVE_SHA256=RELEASE_SHA256_PLACEHOLDER
 BASE_URL=https://itrupanel.com/panel
 fail() { echo "Ошибка: $*" >&2; exit 1; }

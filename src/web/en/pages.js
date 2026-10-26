@@ -1724,6 +1724,8 @@ page('php', {
     const p = panel(view);
     const load = async () => {
       const rows = await api('php.list');
+      const comps = await api('components.list').then((d) => d.rows).catch(() => []);
+      const cmap = Object.fromEntries(comps.filter((c) => c.kind === 'php').map((c) => [c.id.slice(4), c]));
       table(p, {
         rows,
         columns: [
@@ -1731,8 +1733,10 @@ page('php', {
           { t: "Status", r: (r) => r.job === 'running' ? "<span class=\"tag acc\"><span class=\"spin\" style=\"width:12px;height:12px;border-width:2px\"></span> installing</span>" : r.job === 'error' ? "<span class=\"tag err\">installation error</span>" : r.installed ? (r.active ? "<span class=\"tag ok\">running</span>" : "<span class=\"tag warn\">stopped</span>") : "<span class=\"tag\">not installed</span>" },
           { t: "Release", r: (r) => r.installed && r.release ? h(r.release) : '<span class="muted">—</span>', cls: 'nowrap' },
           { t: "Sites", r: (r) => r.sites || '—' },
+          { t: "Update", r: (r) => r.installed && cmap[r.version] && cmap[r.version].new ? `<span class="tag acc">available ${h(cmap[r.version].new)}</span>` : '<span class="muted">—</span>' },
         ],
         actions: (r) => r.job === 'running' ? [] : r.installed ? [
+          cmap[r.version] && cmap[r.version].new && { i: 'download', t: "Update PHP to " + cmap[r.version].new, label: "Update", fn: () => wsUpdate(cmap[r.version], load) },
           { i: 'edit', t: "php.ini settings", label: "Settings", fn: () => phpIni(r.version) },
           { i: 'archive', t: "Modules", label: "Modules", fn: () => phpExt(r.version) },
           !r.default && { i: 'check', t: "Set as default version", fn: async () => { await api('php.default', { version: r.version }); load(); } },

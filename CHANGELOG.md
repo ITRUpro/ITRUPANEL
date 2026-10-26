@@ -2,6 +2,13 @@
 
 All notable changes to ITRUPANEL. Release archives and checksums: https://itrupanel.com/panel/
 
+## 0.2.25
+
+- **Web servers section** (Linux and FreeBSD): versions of nginx, Apache, OpenLiteSpeed and every installed PHP version; the panel checks the connected package sources once a night and on the **Check for updates** button, reports a new version with a notice and shows an *available* mark (also in the PHP section); an update is installed with a button after the settings are saved to `/var/backups/itrupanel/components`, the configuration is checked, the service is restarted and tested, and everything is restored if anything fails
+- **Choosing nginx:** system packages, nginx.org **stable** or nginx.org **mainline** (on FreeBSD: `nginx` or `nginx-devel`); the panel connects the repository, replaces the package (including the file conflicts of the RHEL packages), sets the worker user and disables the default nginx.org page
+- **Choosing Apache** on Debian and Ubuntu: system packages or the Ondřej Surý repository; OpenLiteSpeed and PHP-FPM are updated from their current repositories
+- tested with the real panel on Debian 12 and 13, Ubuntu 24.04, Rocky Linux 9, AlmaLinux 10 and FreeBSD 14.5: stable ↔ mainline ↔ system for nginx, Apache from the system and from Ondřej Surý, the update of nginx from an older release, updates of OpenLiteSpeed and PHP, with working websites after every step
+
 ## 0.2.24
 
 - **FreeBSD.** Fixed: the panel update was interrupted and rolled back when PHP-FPM did not start because the FreeBSD packages were built for a newer system release (`ld-elf.so.1: … FBSD_1.9 not found`), including a failing rollback. The update and the rollback now leave the PHP service alone in that case

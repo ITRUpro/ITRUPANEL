@@ -26,7 +26,7 @@
     location.reload();
   });
   window.ITRUPANEL_BOOTSTRAP = true;
-  const scripts = ['icons', 'app', 'uploads', 'pages', 'jobs', 'mail_dns', 'mail', 'firewall', 'docker', 'import', 'security', 'antivirus', 'authguard', 'updates', 'feedback'];
+  const scripts = ['icons', 'app', 'uploads', 'pages', 'jobs', 'mail_dns', 'mail', 'firewall', 'docker', 'import', 'security', 'antivirus', 'authguard', 'webservers', 'updates', 'feedback'];
   async function boot() {
     for (const file of scripts) await new Promise((yes, no) => { const script = document.createElement('script'); script.src = (language === 'en' ? '/en/' : '/') + file + '.js'; script.onload = yes; script.onerror = no; document.head.append(script); });
     start();

@@ -498,6 +498,7 @@ func registerAll() {
 	registerLogs()
 	registerStats()
 	registerPHP()
+	registerComponents()
 	registerSystem()
 	registerFirewall()
 	registerSecurity()

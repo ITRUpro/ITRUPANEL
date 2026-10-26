@@ -37,7 +37,7 @@
    "group": "start",
    "ru": {
     "title": "Установка и первый вход",
-    "lead": "ITRUPANEL ставится одной командой на чистый Linux-сервер с root-доступом и systemd. Панель поддерживает Ubuntu 22.04 / 24.04 / 26.04, Debian 11–13, AlmaLinux и Rocky Linux 8–10, CentOS Stream 9–10 и RHEL 8–10 на архитектурах amd64 и arm64.",
+    "lead": "ITRUPANEL ставится одной командой на чистый Linux-сервер с root-доступом и systemd. Панель поддерживает Ubuntu 22.04 / 24.04 / 26.04, Debian 11–13, AlmaLinux и Rocky Linux 8–10, CentOS Stream 9–10 и RHEL 8–10 на архитектурах amd64 и arm64, а также FreeBSD 14–15 (бета).",
     "how": "Команда скачивает установщик, проверяет контрольную сумму полного архива и запускает установку. Установщик настраивает Nginx, PHP-FPM, MariaDB, FTP и DNS, создаёт администратора и печатает логин и пароль в терминале. Если панель уже установлена, та же команда выбирает режим обновления с резервной копией программы и настроек.",
     "features": [
      "Команда: wget -O install.sh https://itrupanel.com/panel/install-itrupanel.sh && bash install.sh (от root, без sudo).",
@@ -45,13 +45,14 @@
      "Версию PHP можно выбрать переменной PHP_VERSION (например, PHP_VERSION=8.4) или не ставить PHP вовсе: PHP_VERSION=none.",
      "При первом входе нужно прочитать и принять условия использования; пока они не приняты, остальные функции панели закрыты.",
      "Порты по умолчанию: панель — TCP 3333, сайты — 80 и 443, FTP — 21 и пассивные 30000–30100, DNS — 53 (если используется). Брандмауэр у хостинг-провайдера настраивается отдельно.",
-     "Если установка прервалась, устраните причину и запустите команду снова."
+     "Если установка прервалась, устраните причину и запустите команду снова.",
+     "FreeBSD 14 и 15 (бета, amd64 и arm64) ставится отдельным архивом и отдельной командой: fetch -o install.sh https://itrupanel.com/panel/install-itrupanel-freebsd.sh && sh install.sh. На FreeBSD работают сайты (nginx, Apache, PHP-FPM), базы MariaDB, FTP, SSL, почта, DNS (NSD вместо BIND), антивирус, брандмауэр на pf, защита FTP и резервные копии. Не работают OpenLiteSpeed, Docker и «Серверы БД» (нужен Docker), загрузчик ionCube; одновременно ставится одна версия PHP (пакеты FreeBSD php82–php85 конфликтуют); сменить её можно в разделе «PHP» кнопкой «Перейти на эту версию» — сайты и веб-почта переключатся сами."
     ],
     "note": "Ставьте панель на чистый сервер. Если на нём уже работает другая панель или живые сайты, подготовьте отдельный сервер и перенесите данные разделом «Импорт данных»."
    },
    "en": {
     "title": "Installation and first sign-in",
-    "lead": "ITRUPANEL is installed with one command on a clean Linux server with root access and systemd. It supports Ubuntu 22.04 / 24.04 / 26.04, Debian 11–13, AlmaLinux and Rocky Linux 8–10, CentOS Stream 9–10 and RHEL 8–10 on amd64 and arm64.",
+    "lead": "ITRUPANEL is installed with one command on a clean Linux server with root access and systemd. It supports Ubuntu 22.04 / 24.04 / 26.04, Debian 11–13, AlmaLinux and Rocky Linux 8–10, CentOS Stream 9–10 and RHEL 8–10 on amd64 and arm64, and FreeBSD 14–15 (beta).",
     "how": "The command downloads the installer, verifies the checksum of the full archive and starts the installation. The installer sets up Nginx, PHP-FPM, MariaDB, FTP and DNS, creates the administrator and prints the login and password in the terminal. If the panel is already installed, the same command switches to the update procedure with a backup of the program and settings.",
     "features": [
      "Command: wget -O install.sh https://itrupanel.com/panel/install-itrupanel.sh && bash install.sh (as root, without sudo).",
@@ -59,7 +60,8 @@
      "Choose the PHP version with the PHP_VERSION variable (for example PHP_VERSION=8.4) or skip PHP entirely: PHP_VERSION=none.",
      "On the first sign-in you must read and accept the terms of use; until then the rest of the panel stays locked.",
      "Default ports: panel — TCP 3333, websites — 80 and 443, FTP — 21 and passive 30000–30100, DNS — 53 (if used). The firewall at your hosting provider is configured separately.",
-     "If the installation was interrupted, fix the cause and run the command again."
+     "If the installation was interrupted, fix the cause and run the command again.",
+     "FreeBSD 14 and 15 (beta, amd64 and arm64) has its own archive and its own command: fetch -o install.sh https://itrupanel.com/panel/install-itrupanel-freebsd.sh && sh install.sh. On FreeBSD these work: websites (nginx, Apache, PHP-FPM), MariaDB databases, FTP, SSL, mail, DNS (NSD instead of BIND), antivirus, the pf firewall, FTP protection and backups. OpenLiteSpeed, Docker and “Database servers” (they need Docker) and the ionCube loader are not available; only one PHP version is installed at a time (the FreeBSD packages php82–php85 conflict); change it in the PHP section with the “Switch to this version” button — websites and webmail are moved automatically."
     ],
     "note": "Install on a clean server. If another panel or live websites already run on it, prepare a separate server and move the data with the Import data section."
    }
@@ -136,7 +138,13 @@
      "Редирект HTTP → HTTPS, редирект www, сжатие gzip, кэширование статики в браузере, лимит размера загрузки, индексные файлы, «Все запросы на index.php» для ЧПУ в Laravel и большинстве CMS.",
      "SSL: выбор сертификата, самоподписанный или автоматический Let’s Encrypt — панель выпустит сертификат, как только домен начнёт указывать на сервер.",
      "Можно сразу создать DNS-зону для домена; для поддомена существующей зоны A-записи добавятся автоматически.",
-     "Веб-сервер за Nginx: PHP-FPM, а при необходимости Apache или OpenLiteSpeed.",
+     "Веб-сервер за Nginx: PHP-FPM, а при необходимости Apache или OpenLiteSpeed; в списке сайтов рядом с названием веб-сервера показана его версия.",
+     "Шаблоны сайтов: готовые наборы правил nginx под тип сайта (WordPress, Laravel / Symfony, Joomla, 1С-Битрикс, одностраничное приложение, «Закрыть служебные файлы») и свои шаблоны; шаблон выбирается в форме сайта, основу (порты, SSL, защита, PHP, закрытые служебные файлы) панель оставляет за собой. В правилах можно использовать переменные %DOMAIN%, %ROOT%, %USER%, %PHP%, %SOCK%. Изменение шаблона сразу применяется ко всем его сайтам; если nginx находит ошибку, всё возвращается как было. Кнопка «Как выглядит на сайте» показывает итоговую конфигурацию.",
+     "Тип сайта при создании: один вопрос «Что за сайт?» (обычный PHP, WordPress, Laravel / Symfony, Joomla, 1С-Битрикс, одностраничное приложение, статический сайт, приложение через прокси) сам выбирает режим, шаблон, красивые ссылки и корневую папку (для Laravel — public).",
+     "Кэш страниц: выбор срока (от 1 минуты до суток) включает кэш nginx. Страницы отдаются без запуска PHP; не кэшируются запросы с данными, админки, вошедшие пользователи и корзины. Кнопка «Очистить кэш» есть в строке сайта. Работает для PHP-FPM, Apache, OpenLiteSpeed и приложений за прокси.",
+     "Нагрузка на PHP: «Обычная», «Экономная» или «Высокая нагрузка» — число процессов PHP-FPM панель считает по памяти сервера; рядом память на скрипт и время работы скрипта для сайта.",
+     "Защита сайта галочками: заголовки безопасности, защита картинок и видео от копирования (hotlink), пароль на весь сайт (проверка Let’s Encrypt не затрагивается) и доступ к админке (/wp-admin, /wp-login.php, /administrator, /bitrix/admin, /admin, /phpmyadmin) только с выбранных IP-адресов или сетей.",
+     "Библиотека шаблонов: подписанный набор готовых шаблонов (Drupal, OpenCart, MediaWiki, phpBB, MODX, PHP-фреймворки) раз в сутки обновляется с GitHub (резерв — itrupanel.com) без выпуска новой версии панели; принимаются только подписанные и более новые наборы, а правила проверяются так же, как свои шаблоны.",
      "Собственные директивы Nginx для сайта и просмотр итоговой конфигурации (только чтение).",
      "Приостановка и удаление сайта (с файлами или без).",
      "«Сайт по умолчанию» — какой сайт отвечает по IP-адресу сервера и на неизвестные домены."
@@ -154,7 +162,13 @@
      "HTTP → HTTPS redirect, www redirect, gzip, browser caching of static files, upload size limit, index files, and All requests to index.php for pretty URLs in Laravel and most CMS.",
      "SSL: pick a certificate, a self-signed one or automatic Let’s Encrypt — the panel issues the certificate as soon as the domain points to the server.",
      "You can create a DNS zone for the domain at once; for a subdomain of an existing zone, A records are added automatically.",
-     "Web server behind Nginx: PHP-FPM, and Apache or OpenLiteSpeed when needed.",
+     "Web server behind Nginx: PHP-FPM, and Apache or OpenLiteSpeed when needed; the sites list shows the version next to the web server name.",
+     "Site templates: ready sets of nginx rules for a type of site (WordPress, Laravel / Symfony, Joomla, 1C-Bitrix, single-page application, Protect service files) and your own templates; a template is chosen in the site form, and the panel keeps the base (ports, SSL, protection, PHP, closed service files). The rules can use the variables %DOMAIN%, %ROOT%, %USER%, %PHP%, %SOCK%. Changing a template is applied to all its sites at once; if nginx finds an error, everything is restored as it was. The How it looks on a site button shows the resulting configuration.",
+     "Site type at creation: one question “What kind of site?” (regular PHP, WordPress, Laravel / Symfony, Joomla, 1C-Bitrix, single-page application, static site, application behind a proxy) picks the mode, template, pretty links and the root folder (public for Laravel) for you.",
+     "Page cache: choosing a period (from 1 minute to a day) turns on the nginx cache. Pages are served without running PHP; requests with data, admin areas, logged-in users and carts are not cached. The Clear cache button is in the site row. It works for PHP-FPM, Apache, OpenLiteSpeed and applications behind a proxy.",
+     "PHP load: “Normal”, “Economical” or “High load” — the panel calculates the number of PHP-FPM processes from the server memory; the memory per script and the script run time can be set for the site next to it.",
+     "Site protection with checkboxes: security headers, protection of images and video from hotlinking, a password for the whole site (the Let’s Encrypt check is not affected) and access to the admin area (/wp-admin, /wp-login.php, /administrator, /bitrix/admin, /admin, /phpmyadmin) only from chosen IP addresses or networks.",
+     "Template library: a signed set of ready templates (Drupal, OpenCart, MediaWiki, phpBB, MODX, PHP frameworks) is updated once a day from GitHub (fallback: itrupanel.com) without releasing a new panel version; only signed and newer sets are accepted, and the rules are checked like your own templates.",
      "Custom Nginx directives for a site and a read-only view of the resulting configuration.",
      "Suspend and delete a website (with or without files).",
      "Default website — which site answers on the server IP address and on unknown domains."
@@ -239,6 +253,8 @@
      "Проверка DNS-записей домена (MX, SPF, DKIM, DMARC, PTR) по авторитетным серверам имён.",
      "Подключение почтовых программ: IMAP 993 (TLS), SMTP 587 (STARTTLS), логин — полный адрес ящика.",
      "Веб-почта Roundcube для каждого домена, антиспам Rspamd с порогами пометки [SPAM] и отклонения.",
+     "Greylisting: письмо от незнакомого отправителя с баллом спама от заданного порога получает временный отказ и принимается при повторной доставке через несколько минут (по умолчанию 5); авторизованных пользователей и локальную почту это не касается, первое письмо от нового отправителя приходит с задержкой.",
+     "DNSBL (чёрные списки): отправители проверяются по спискам Spamhaus ZEN, NiX Spam, Blocklist.de, Virusfree, SenderScore, Mailspike и DNSWL; каждый список можно выключить, а проверку целиком отключить. Можно добавить свои списки с баллом. Spamhaus не отвечает публичным DNS (8.8.8.8, 1.1.1.1), нужен собственный резолвер сервера.",
      "Сертификат Let’s Encrypt для имени почтового сервера и продление в автоматическом режиме.",
      "Проверка репутации домена и IP через MXToolbox (нужен API-ключ) или Spamhaus."
     ],
@@ -254,6 +270,8 @@
      "Check of the domain DNS records (MX, SPF, DKIM, DMARC, PTR) against authoritative name servers.",
      "Mail client setup: IMAP 993 (TLS), SMTP 587 (STARTTLS), login is the full mailbox address.",
      "Roundcube webmail per domain, Rspamd antispam with thresholds for the [SPAM] mark and rejection.",
+     "Greylisting: a message from an unknown sender with a spam score from the set threshold gets a temporary rejection and is accepted when the delivery is retried a few minutes later (5 by default); authenticated users and local mail are not affected, and the first message from a new sender arrives with a delay.",
+     "DNSBL (blocklists): senders are checked against Spamhaus ZEN, NiX Spam, Blocklist.de, Virusfree, SenderScore, Mailspike and DNSWL; each list can be turned off, or the whole check disabled. You can add your own lists with a score. Spamhaus does not answer public DNS (8.8.8.8, 1.1.1.1), so the server needs its own resolver.",
      "A Let’s Encrypt certificate for the mail server name with automatic renewal.",
      "Reputation check of the domain and IP through MXToolbox (API key needed) or Spamhaus."
     ],
@@ -364,7 +382,7 @@
      "Облачное хранилище S3 — любой S3-совместимый сервис: Amazon S3, Yandex Object Storage, Cloudflare R2, Wasabi, DigitalOcean Spaces, MinIO и др. Выберите «В облаке (S3)» (копия хранится только в облаке) или «Здесь и в облаке», укажите сервис из списка, адрес, регион, бакет, папку и ключи. Бакет создаётся заранее в личном кабинете облака, ключу нужны права на чтение, запись и удаление объектов. Большие архивы загружаются частями, секретный ключ в интерфейсе скрыт.",
      "Копии сгруппированы по предметам: в каждой вкладке («Файлы сайтов», «Базы данных», «Настройки панели») видна одна строка на сайт, базу или панель — число копий, последняя дата, общий размер и место хранения. Щёлкните по строке: откроются все копии именно этого сайта, базы или панели от новых к старым, с кнопками содержимого, скачивания, восстановления и удаления. Кнопка «← Все сайты» возвращает к общему списку.",
      "Полные и инкрементные копии; части цепочки, нужные другим копиям, нельзя удалить.",
-     "Содержимое копии: просмотр файлов и баз, скачивание выбранного.",
+     "Содержимое копии: просмотр файлов и баз, скачивание выбранного; пока файл готовится, в углу экрана видны полоса хода, проценты и оценка оставшегося времени, а скачивание можно остановить.",
      "Частичное восстановление: только нужные файлы, папки или базы, без затрагивания остального сайта.",
      "Восстановление целого сайта, отдельных баз и настроек.",
      "Поиск уже существующих копий на FTP или в облаке («Найти копии в хранилище») и их подключение; такие копии не входят в расписание хранения.",
@@ -383,7 +401,7 @@
      "S3 cloud storage is any S3-compatible service: Amazon S3, Yandex Object Storage, Cloudflare R2, Wasabi, DigitalOcean Spaces, MinIO and others. Choose “In the cloud (S3)” (the backup is kept only in the cloud) or “Here and in the cloud”, pick the service from the list and enter the address, region, bucket, folder and keys. Create the bucket in advance in your cloud account; the key needs permission to read, write and delete objects. Large archives are uploaded in parts, and the secret key is hidden in the interface.",
      "Backups are grouped by item: each tab (“Website files”, “Databases”, “Panel settings”) shows one row per site, database or the panel — the number of backups, the latest date, the total size and where they are stored. Click a row to open all backups of that site, database or panel, newest first, with buttons for contents, download, restore and delete. The “← All sites” button returns to the overall list.",
      "Full and incremental backups; parts of the chain needed by other backups cannot be deleted.",
-     "Backup contents: browse files and databases and download a selection.",
+     "Backup contents: browse files and databases and download a selection; while the file is being prepared, a progress bar with the percentage and the estimated time left is shown in the corner and the download can be stopped.",
      "Partial restore: only the files, folders or databases you need, without touching the rest of the site.",
      "Restore a whole site, single databases and settings.",
      "Find existing backups on FTP or in the cloud (“Find backups in the storage”) and attach them; such backups are excluded from scheduled retention.",
@@ -477,10 +495,11 @@
     "how": "Каждая версия работает как отдельная служба PHP-FPM. Стандартные модули ставятся вместе с версией, дополнительные можно добавлять и удалять. Версия по умолчанию используется для новых сайтов.",
     "features": [
      "Установка и удаление версий PHP; доступность зависит от ОС и репозиториев.",
-     "Состояние каждой версии: работает, остановлен, ошибка установки.",
-     "Пакеты и модули версии: mysql, gd, curl, mbstring, xml, zip, intl, imagick, opcache и другие.",
+     "Состояние каждой версии: работает, остановлен, ошибка установки; в колонке «Релиз» показан точный выпуск установленной версии (например, 8.3.36).",
+     "Модули версии: около 30 расширений PHP по разделам (базы данных, кэш и очереди, графика, отладка и профилирование, защита кода), включая ionCube Loader. Каждый модуль можно установить, выключить, не удаляя, снова включить или удалить; в окне есть поиск. Модули основного пакета PHP (например, exif) можно только включать и выключать. ionCube Loader скачивается с сайта разработчика (downloads.ioncube.com) и подключается первым; поддерживаются PHP 5.6–8.5.",
      "Настройки php.ini: лимиты памяти и загрузки, время выполнения и т. д.; пустое поле означает значение PHP по умолчанию и не записывается.",
-     "«Сделать версией по умолчанию» и перезапуск PHP-FPM."
+     "«Сделать версией по умолчанию» и перезапуск PHP-FPM.",
+     "Обновления выпусков: если для установленной версии вышел новый выпуск (например, 8.3.36), в колонке «Обновление» появляется метка «доступна», а в строке — кнопка «Обновить» (подробности — в разделе «Веб-серверы»)."
     ],
     "note": ""
    },
@@ -490,12 +509,43 @@
     "how": "Each version runs as a separate PHP-FPM service. Standard modules are installed with the version, extra ones can be added and removed. The default version is used for new websites.",
     "features": [
      "Install and remove PHP versions; availability depends on the OS and repositories.",
-     "The status of every version: running, stopped, installation error.",
-     "Packages and modules of a version: mysql, gd, curl, mbstring, xml, zip, intl, imagick, opcache and others.",
+     "The status of every version: running, stopped, installation error; the Release column shows the exact release of the installed version (for example 8.3.36).",
+     "Modules of a version: about 30 PHP extensions by section (databases, cache and queues, graphics, debugging and profiling, code protection), including ionCube Loader. Every module can be installed, turned off without removing, turned on again or removed; the window has a search. Modules of the main PHP package (for example exif) can only be turned on and off. ionCube Loader is downloaded from the developer's site (downloads.ioncube.com) and loaded first; PHP 5.6–8.5 are supported.",
      "php.ini settings: memory and upload limits, execution time and so on; an empty field means the PHP default and is not written.",
-     "Make default and restart PHP-FPM."
+     "Make default and restart PHP-FPM.",
+     "Release updates: when a new release of an installed version is out (for example 8.3.36), the Update column shows an “available” mark and the row gets an Update button (details are in the Web servers section)."
     ],
     "note": ""
+   }
+  },
+  {
+   "id": "webservers",
+   "group": "server",
+   "ru": {
+    "title": "Веб-серверы",
+    "lead": "Версии nginx, Apache, OpenLiteSpeed и PHP, проверка и установка обновлений прямо в панели.",
+    "how": "Панель раз в сутки (ночью) и по кнопке «Проверить обновления» смотрит, есть ли в подключённых источниках пакетов более новый выпуск. О новой версии она сообщает уведомлением (колокольчик вверху) и показывает метку «доступна» в этом разделе и в разделе «PHP». Сама ничего не обновляет: обновление запускается кнопкой.",
+    "features": [
+     "Таблица: компонент, установленная версия, источник пакетов, состояние службы и доступное обновление.",
+     "«Обновить»: перед заменой пакетов настройки сохраняются в копию (/var/backups/itrupanel/components); после обновления проверяется конфигурация, служба перезапускается и проверяется, что она отвечает. Если что-то не так, настройки возвращаются.",
+     "nginx: «Источник» позволяет выбрать пакеты системы, nginx.org stable (стабильная ветка) или nginx.org mainline (основная ветка с новыми возможностями); на FreeBSD — стабильную (пакет nginx) или основную (пакет nginx-devel). Панель сама подключает репозиторий, ставит версию и приводит настройки в порядок (пользователь рабочих процессов, страница по умолчанию).",
+     "Apache: на Debian и Ubuntu можно выбрать пакеты системы или репозиторий Ondřej Surý со свежими выпусками 2.4; на остальных системах обновление идёт из пакетов системы (у Apache одна поддерживаемая ветка 2.4, меняются только мелкие версии).",
+     "OpenLiteSpeed обновляется из репозитория LiteSpeed (только на Linux); PHP-FPM каждой установленной версии обновляется до последнего выпуска этой версии, например с 8.3.35 до 8.3.36 (кнопка есть и в разделе «PHP»)."
+    ],
+    "note": "Обновление перезапускает службу: сайты могут кратко не отвечать. Делайте его в удобное время. Источник пакетов nginx.org и репозиторий Ondřej Surý доступны не для всех версий систем; если для вашей их нет, панель сообщит об этом и ничего не изменит."
+   },
+   "en": {
+    "title": "Web servers",
+    "lead": "Versions of nginx, Apache, OpenLiteSpeed and PHP, with update checks and installation right in the panel.",
+    "how": "Once a day (at night) and with the Check for updates button the panel looks for a newer release in the connected package sources. It reports a new version with a notice (the bell at the top) and shows an “available” mark in this section and in the PHP section. It never updates anything by itself: an update is started with a button.",
+    "features": [
+     "A table: the component, the installed version, the package source, the state of the service and the available update.",
+     "Update: before the packages are replaced the settings are saved to a copy (/var/backups/itrupanel/components); afterwards the configuration is checked, the service is restarted and checked to respond. If anything is wrong the settings are restored.",
+     "nginx: Source lets you choose the system packages, nginx.org stable (the stable branch) or nginx.org mainline (the branch with new features); on FreeBSD — stable (the nginx package) or mainline (the nginx-devel package). The panel connects the repository, installs the version and puts the settings in order (the worker user, the default page).",
+     "Apache: on Debian and Ubuntu you can choose the system packages or the Ondřej Surý repository with fresh 2.4 releases; on other systems the update comes from the system packages (Apache has one supported branch, 2.4, and only minor versions change).",
+     "OpenLiteSpeed is updated from the LiteSpeed repository (Linux only); PHP-FPM of every installed version is updated to the latest release of that version, for example from 8.3.35 to 8.3.36 (the button is also in the PHP section)."
+    ],
+    "note": "An update restarts the service: websites may briefly not respond, so choose a convenient time. The nginx.org and Ondřej Surý repositories are not available for every system version; if there is none for yours, the panel says so and changes nothing."
    }
   },
   {
@@ -675,6 +725,9 @@
      "Кнопка «Вылечить»: панель просматривает резервные копии и для каждого заражённого файла находит последнюю чистую версию — восстанавливается только этот файл; если чистой версии нет, вредоносная вставка вырезается, а подброшенные файлы уходят в карантин. Перед изменениями показывается план.",
      "Карантин: прежние версии файлов сохраняются и могут быть возвращены.",
      "ClamAV: базы около 120 МБ обновляются автоматически раз в сутки; если официальный сервер недоступен из страны сервера, панель переключается на проверенные зеркала. Для проверки ClamAV нужно от 2 ГБ памяти.",
+     "Правила антивируса: дополнительный набор правил подписан ключом выпусков ITRUPANEL и обновляется отдельно от панели, без перезапуска; раз в сутки панель сверяется с GitHub (резерв — itrupanel.com) и принимает только подписанные и более новые наборы. В разделе «Антивирус» его можно обновить кнопкой или отключить автоматическое обновление.",
+     "AI-Bolit (по желанию): второй антивирус рядом с ClamAV, сканер сайтов от Revisium. Панель его не поставляет — у сканера и его базы нет лицензии на распространение: в разделе «Антивирус» нажмите «Подключить AI-Bolit» и укажите https-адрес файла ai-bolit.php со страницы разработчика; нужен PHP в командной строке. Антивирусы работают по очереди: встроенная проверка, затем ClamAV, затем AI-Bolit, с низким приоритетом и без опасных функций PHP; в результатах у находки указан движок.",
+     "Проверка, лечение, обновление баз ClamAV и правил идут по очереди, а не одновременно: следующая работа ждёт окончания предыдущей, чтобы не перегружать слабый сервер.",
      "О найденном сообщают уведомления."
     ],
     "note": "Эвристика может давать ложные срабатывания. Перед удалением подозрительного файла посмотрите находку; панель сохраняет прежнюю версию в карантин."
@@ -689,6 +742,9 @@
      "The Clean up button: the panel browses the backups and for every infected file finds the last clean version — only that file is restored; if there is no clean version, the malicious injection is cut out and planted files go to quarantine. A plan is shown before any change.",
      "Quarantine: previous file versions are kept and can be brought back.",
      "ClamAV: databases of about 120 MB are updated automatically once a day; if the official server is unavailable from the server country, the panel switches to trusted mirrors. ClamAV scanning needs at least 2 GB of memory.",
+     "Antivirus rules: an additional rule pack is signed with the ITRUPANEL release key and updated separately from the panel, without a restart; once a day the panel checks GitHub (fallback: itrupanel.com) and accepts only signed and newer packs. In the Antivirus section you can update it with a button or turn off automatic updates.",
+     "AI-Bolit (optional): a second antivirus next to ClamAV, the website scanner by Revisium. The panel does not ship it — the scanner and its database have no licence that allows redistribution: in the Antivirus section press Connect AI-Bolit and enter the https address of the ai-bolit.php file from the developer's page; PHP on the command line is required. The antiviruses run one after another: the built-in scan, then ClamAV, then AI-Bolit, at the lowest priority and without dangerous PHP functions; each finding shows its engine.",
+     "Scans, cleanup, ClamAV database updates and rule updates run one after another, not at the same time: the next job waits for the previous one to finish, so a weak server is not overloaded.",
      "Notifications report findings."
     ],
     "note": "Heuristics can produce false positives. Look at a finding before deleting a suspicious file; the panel keeps the previous version in quarantine."
